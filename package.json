@@ -1,0 +1,31 @@
+{
+  "name": "pdfjs-anno-test2",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
+    "ant-design-vue": "^4.2.6",
+    "i18next": "^25.3.6",
+    "konva": "^9.3.22",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.54",
+    "vue": "^3.5.18",
+    "vue-i18n": "^11.1.11",
+    "web-highlighter": "^0.7.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/tsconfig": "^0.7.0",
+    "sass": "^1.90.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.2",
+    "vue-tsc": "^3.0.5"
+  }
+}
