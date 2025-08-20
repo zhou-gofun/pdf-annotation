@@ -1,0 +1,62 @@
+import type { Annotation, SquareAnnotation } from 'pdfjs'
+import { Decoder, type IDecoderOptions } from './decoder'
+import Konva from 'konva'
+import { SHAPE_GROUP_NAME } from '../const'
+import { convertToRGB } from '../../utils/utils'
+import { Annotation as AnnotationDef, type IAnnotationStore, PdfjsAnnotationEditorType } from '../../const/definitions'
+
+export class SquareDecoder extends Decoder {
+    constructor(options: IDecoderOptions) {
+        super(options)
+    }
+
+    public decodePdfAnnotation(annotation: SquareAnnotation, allAnnotations: Annotation[]) {
+        const color = convertToRGB(annotation.color as [number, number, number])
+        const borderWidth = annotation.borderStyle.width === 1 ? annotation.borderStyle.width + 1 : annotation.borderStyle.width
+        const { x, y, width, height } = this.convertRect(
+            annotation.rect,
+            annotation.pageViewer.viewport.scale,
+            annotation.pageViewer.viewport.height
+        )
+        const ghostGroup = new Konva.Group({
+            draggable: false,
+            name: SHAPE_GROUP_NAME,
+            id: annotation.id
+        })
+        const rect = new Konva.Rect({
+            x,
+            y,
+            width,
+            height,
+            strokeScaleEnabled: false,
+            stroke: color,
+            strokeWidth: borderWidth,
+            fill: annotation.borderStyle.width === 0 ? color : undefined,
+            opacity: annotation.borderStyle.width === 0 ? 0.5 : 1
+        })
+        ghostGroup.add(rect)
+        const annotationStore: IAnnotationStore = {
+            id: annotation.id,
+            pageNumber: annotation.pageNumber,
+            konvaString: ghostGroup.toJSON(),
+            konvaClientRect: ghostGroup.getClientRect(),
+            title: annotation.titleObj.str,
+            type: AnnotationDef.RECTANGLE,
+            color,
+            pdfjsType: annotation.annotationType,
+            pdfjsEditorType: PdfjsAnnotationEditorType.INK,
+            subtype: annotation.subtype,
+            date: annotation.modificationDate ?? '',
+            contentsObj: {
+                text: annotation.contentsObj.str
+            },
+            comments: this.getComments(annotation, allAnnotations),
+            draggable: true,
+            resizable: true
+        }
+
+        ghostGroup.destroy()
+
+        return annotationStore
+    }
+}

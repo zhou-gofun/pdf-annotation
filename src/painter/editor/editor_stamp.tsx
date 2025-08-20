@@ -1,10 +1,11 @@
 import Konva from 'konva'
-import { KonvaEventObject } from 'konva/lib/Node'
+import type { KonvaEventObject } from 'konva/lib/Node'
 
-import { AnnotationType, IAnnotationType } from '../../const/definitions'
+import type {  IAnnotationType } from '../../const/definitions'
+import { Annotation } from '../../const/definitions'
 import { resizeImage, setCssCustomProperty } from '../../utils/utils'
 import { CURSOR_CSS_PROPERTY } from '../const'
-import { Editor, IEditorOptions } from './editor'
+import { Editor, type IEditorOptions } from './editor'
 import { defaultOptions } from '../../const/default_options'
 
 /**
@@ -12,7 +13,7 @@ import { defaultOptions } from '../../const/default_options'
  */
 export class EditorStamp extends Editor {
     private stampUrl: string // 签章图片的 URL
-    private stampImage: Konva.Image // Konva.Image 对象用于显示签章图片
+    private stampImage: Konva.Image | null = null // Konva.Image 对象用于显示签章图片
 
     /**
      * 创建一个 EditorStamp 实例。
@@ -20,8 +21,8 @@ export class EditorStamp extends Editor {
      * @param defaultStampUrl 默认的签章图片 URL
      */
     constructor(EditorOptions: IEditorOptions, defaultStampUrl: string | null) {
-        super({ ...EditorOptions, editorType: AnnotationType.STAMP }) // 调用父类的构造函数
-        this.stampUrl = defaultStampUrl // 设置签章图片 URL
+        super({ ...EditorOptions, editorType: Annotation.STAMP }) // 调用父类的构造函数
+        this.stampUrl = defaultStampUrl || '' // 设置签章图片 URL，如果为 null 则使用空字符串
         if (defaultStampUrl) {
             this.createCursorImg() // 如果有默认签章图片 URL，则创建光标图像
         }
@@ -108,14 +109,16 @@ export class EditorStamp extends Editor {
 
             this.stampImage = image
             this.stampImage.setAttrs({
-                x: pos.x - crosshair.x,
-                y: pos.y - crosshair.y,
+                x: pos?.x ? pos.x - crosshair.x : 0,
+                y: pos?.y ? pos.y - crosshair.y : 0,
                 width: newWidth,
                 height: newHeight,
                 base64: this.stampUrl
             })
-            this.currentShapeGroup.konvaGroup.add(this.stampImage)
-            const id = this.currentShapeGroup.konvaGroup.id()
+            if (this.currentShapeGroup && this.stampImage) {
+                this.currentShapeGroup.konvaGroup.add(this.stampImage)
+            }
+            const id = this.currentShapeGroup?.konvaGroup?.id() ?? ''
             this.setShapeGroupDone(
                 {
                     id,
@@ -138,7 +141,7 @@ export class EditorStamp extends Editor {
      */
     public activateWithStamp(konvaStage: Konva.Stage, annotation: IAnnotationType, stampUrl: string | null) {
         super.activate(konvaStage, annotation) // 调用父类的激活方法
-        this.stampUrl = stampUrl // 设置签章图片 URL
+        this.stampUrl = stampUrl || '' // 设置签章图片 URL，如果为 null 则使用空字符串
         if (stampUrl) {
             this.createCursorImg() // 如果有签章图片 URL，则创建光标图像
         }

@@ -1,7 +1,7 @@
 import Konva from 'konva'
 // import { type KonvaEventObject } from 'konva/lib/Node'
 
-import type { IAnnotationStore, IAnnotationStyle } from '../../const/definitions'
+import type { AnnotationType, IAnnotationStore, IAnnotationStyle } from '../../const/definitions'
 import { Annotation } from '../../const/definitions'
 import { Editor, type IEditorOptions } from './editor'
 
@@ -17,7 +17,7 @@ export class EditorHighLight extends Editor {
     // constructor(EditorOptions: IEditorOptions, editorType: AnnotationType) {
     //     super({ ...EditorOptions, editorType })
     // }
-    constructor(EditorOptions: IEditorOptions) {
+    constructor(EditorOptions: IEditorOptions, editorType: AnnotationType) {
         super({ ...EditorOptions, editorType: Annotation.HIGHLIGHT })
     }
 

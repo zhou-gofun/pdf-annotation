@@ -1,8 +1,8 @@
 import Konva from 'konva'
-import { KonvaEventObject } from 'konva/lib/Node'
-import { PDFViewerApplication } from 'pdfjs'
+import type { KonvaEventObject } from 'konva/lib/Node'
+import type { PDFViewerApplication } from 'pdfjs'
 
-import { AnnotationType, IAnnotationContentsObj, IAnnotationStore, IAnnotationStyle, IAnnotationType } from '../../const/definitions'
+import type { IAnnotationContentsObj, IAnnotationStore, IAnnotationStyle, IAnnotationType } from '../../const/definitions'
 import { formatTimestamp, generateUUID } from '../../utils/utils'
 import { SHAPE_GROUP_NAME } from '../const'
 
@@ -34,7 +34,7 @@ export interface IShapeGroup {
     konvaGroup: Konva.Group // Konva.Group 对象
     isDone: boolean // 标识形状组是否已完成
     pageNumber: number // 所属页面的页码
-    annotation?: IAnnotationType // 关联的注解对象
+    annotation: IAnnotationType // 关联的注解对象
 }
 
 /**
@@ -98,10 +98,10 @@ export abstract class Editor {
             konvaString: konvaGroup.toJSON(),
             konvaClientRect: Konva.Node.create(konvaGroup.toJSON()).getClientRect(),
             title: this.userName,
-            type: annotation.type,
+            type: annotation?.type || 0, // 如果 type 为 undefined，则使用默认值 0
             pdfjsType: annotation.pdfjsAnnotationType,
             pdfjsEditorType: annotation.pdfjsEditorType,
-            subtype: annotation.subtype,
+            subtype: annotation.subtype || 'Highlight', // 如果 subtype 为 undefined，则使用默认值 'Highlight'
             color,
             fontSize,
             date: formatTimestamp(Date.now()),
@@ -185,7 +185,7 @@ export abstract class Editor {
      */
     protected delShapeGroup(id: string) {
         this.shapeGroupStore.delete(id) // 从 shapeGroupStore 中删除指定 ID 的形状组
-        const group = this.konvaStage.findOne(node => node.getType() === 'Group' && node.id() === id) // 查找对应 ID 的 Konva.Group 对象
+        const group = this.konvaStage.findOne((node: Konva.Node) => node.getType() === 'Group' && node.id() === id) // 查找对应 ID 的 Konva.Group 对象
         if (group) {
             group.destroy() // 销毁 Konva.Group 对象
         }
@@ -197,7 +197,7 @@ export abstract class Editor {
      * @returns
      */
     protected getShapeGroupById(id: string): Konva.Group {
-        const group = this.konvaStage.findOne(node => node.getType() === 'Group' && node.id() === id) // 查找对应 ID 的 Konva.Group 对象
+        const group = this.konvaStage.findOne((node: Konva.Node) => node.getType() === 'Group' && node.id() === id) // 查找对应 ID 的 Konva.Group 对象
         return group as Konva.Group // 返回找到的 Konva.Group 对象
     }
 
@@ -243,6 +243,9 @@ export abstract class Editor {
      * @protected
      */
     protected getNodesByClassName<T extends Konva.Node>(className: string): T[] {
+        if (!this.currentShapeGroup) {
+            return [] // 如果当前形状组为空则返回空数组
+        }
         const children = this.currentShapeGroup.konvaGroup.getChildren((node: Konva.Node) => node.getClassName() === className) // 获取当前形状组中指定类名的子节点
         return children as unknown as T[] // 返回子节点数组
     }
@@ -299,7 +302,7 @@ export abstract class Editor {
             id,
             konvaGroup: group,
             pageNumber: this.pageNumber,
-            annotation: this.currentAnnotation,
+            annotation: this.currentAnnotation as IAnnotationType,
             isDone: false
         }
         this.shapeGroupStore.set(id, shapeGroup) // 将形状组对象添加到 shapeGroupStore 中
@@ -363,7 +366,8 @@ export abstract class Editor {
             id,
             konvaGroup: ghostGroup,
             pageNumber: this.pageNumber,
-            isDone: true
+            isDone: true,
+            annotation: this.currentAnnotation as IAnnotationType // 添加必需的 annotation 属性
         }
         this.shapeGroupStore.set(id, shapeGroup)
     }

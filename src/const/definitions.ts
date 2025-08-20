@@ -41,7 +41,7 @@ export type PdfjsAnnotationSubtype =
     | 'Arrow'
 
 // PDF.js 批注类型
-export const PdfjsAnnotationType = {
+export const PdfjsAnnotation = {
     NONE: 0,
     TEXT: 1,
     LINK: 2,
@@ -71,6 +71,9 @@ export const PdfjsAnnotationType = {
     REDACT: 26,
     NOTE: 27
 }
+
+export type PdfjsAnnotationType = typeof PdfjsAnnotation[keyof typeof PdfjsAnnotation]
+
 
 // PDF.js 自带的批注编辑器类型枚举
 // 用于定义 PDF.js 支持的批注类型
@@ -128,7 +131,7 @@ export interface IAnnotationType {
     name: string // 批注的名称
     type: typeof Annotation[keyof typeof Annotation] // 自定义的批注类型
     pdfjsEditorType: typeof PdfjsAnnotationEditorType[keyof typeof PdfjsAnnotationEditorType] // 对应的 Pdfjs 批注类型
-    pdfjsAnnotationType: typeof PdfjsAnnotationType[keyof typeof PdfjsAnnotationType]
+    pdfjsAnnotationType: PdfjsAnnotationType
     subtype?: PdfjsAnnotationSubtype
     isOnce: boolean // 是否只绘制一次
     resizable: boolean // 是否可调整大小
@@ -187,7 +190,7 @@ export interface IAnnotationStore {
     color?: string | null; // 可选颜色，可以是 undefined 或 null
     subtype: PdfjsAnnotationSubtype;
     fontSize?: number | null;
-    pdfjsType: typeof PdfjsAnnotationType[keyof typeof PdfjsAnnotationType]; // PDF.js 批注类型
+    pdfjsType: PdfjsAnnotationType; // PDF.js 批注类型
     pdfjsEditorType: typeof PdfjsAnnotationEditorType[keyof typeof PdfjsAnnotationEditorType]; // PDF.js 编辑器类型
     date: string; // 创建或修改日期
     contentsObj?: IAnnotationContentsObj | null; // 可选的内容对象
@@ -205,7 +208,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'select', // 批注名称
         type: Annotation.SELECT, // 批注类型
         pdfjsEditorType: PdfjsAnnotationEditorType.NONE, // 对应的 PDF.js 批注类型
-        pdfjsAnnotationType: PdfjsAnnotationType.NONE,
+        pdfjsAnnotationType: PdfjsAnnotation.NONE,
         isOnce: false, // 是否只绘制一次
         resizable: false,
         draggable: false,
@@ -215,7 +218,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'highlight',
         type: Annotation.HIGHLIGHT,
         pdfjsEditorType: PdfjsAnnotationEditorType.HIGHLIGHT,
-        pdfjsAnnotationType: PdfjsAnnotationType.HIGHLIGHT,
+        pdfjsAnnotationType: PdfjsAnnotation.HIGHLIGHT,
         subtype: 'Highlight',
         isOnce: false,
         resizable: false,
@@ -234,7 +237,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'strikeout',
         type: Annotation.STRIKEOUT,
         pdfjsEditorType: PdfjsAnnotationEditorType.HIGHLIGHT,
-        pdfjsAnnotationType: PdfjsAnnotationType.STRIKEOUT,
+        pdfjsAnnotationType: PdfjsAnnotation.STRIKEOUT,
         subtype: 'StrikeOut',
         isOnce: false,
         resizable: false,
@@ -253,7 +256,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'underline',
         type: Annotation.UNDERLINE,
         pdfjsEditorType: PdfjsAnnotationEditorType.HIGHLIGHT,
-        pdfjsAnnotationType: PdfjsAnnotationType.UNDERLINE,
+        pdfjsAnnotationType: PdfjsAnnotation.UNDERLINE,
         subtype: 'Underline',
         isOnce: false,
         resizable: false,
@@ -272,7 +275,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'rectangle',
         type: Annotation.RECTANGLE,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.SQUARE,
+        pdfjsAnnotationType: PdfjsAnnotation.SQUARE,
         subtype: 'Square',
         isOnce: true,
         resizable: true,
@@ -293,7 +296,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'circle',
         type: Annotation.CIRCLE,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.CIRCLE,
+        pdfjsAnnotationType: PdfjsAnnotation.CIRCLE,
         subtype: 'Circle',
         isOnce: true,
         resizable: true,
@@ -314,7 +317,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'note',
         type: Annotation.NOTE,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.TEXT,
+        pdfjsAnnotationType: PdfjsAnnotation.TEXT,
         subtype: 'Text',
         isOnce: true,
         resizable: false,
@@ -325,7 +328,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'arrow',
         type: Annotation.ARROW,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.LINE,
+        pdfjsAnnotationType: PdfjsAnnotation.LINE,
         subtype: 'Arrow',
         isOnce: true,
         resizable: true,
@@ -346,7 +349,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'cloud',
         type: Annotation.CLOUD,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.POLYLINE,
+        pdfjsAnnotationType: PdfjsAnnotation.POLYLINE,
         subtype: 'PolyLine',
         isOnce: true,
         resizable: true,
@@ -367,7 +370,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'freehand',
         type: Annotation.FREEHAND,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.INK,
+        pdfjsAnnotationType: PdfjsAnnotation.INK,
         subtype: 'Ink',
         isOnce: true,
         resizable: true,
@@ -388,7 +391,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'freeHighlight',
         type: Annotation.FREE_HIGHLIGHT,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
-        pdfjsAnnotationType: PdfjsAnnotationType.INK,
+        pdfjsAnnotationType: PdfjsAnnotation.INK,
         subtype: 'Highlight',
         isOnce: true,
         resizable: true,
@@ -409,7 +412,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'freeText',
         type: Annotation.FREETEXT,
         pdfjsEditorType: PdfjsAnnotationEditorType.STAMP,
-        pdfjsAnnotationType: PdfjsAnnotationType.FREETEXT,
+        pdfjsAnnotationType: PdfjsAnnotation.FREETEXT,
         subtype: 'FreeText',
         isOnce: true,
         resizable: true,
@@ -429,7 +432,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'signature',
         type: Annotation.SIGNATURE,
         pdfjsEditorType: PdfjsAnnotationEditorType.STAMP,
-        pdfjsAnnotationType: PdfjsAnnotationType.STAMP,
+        pdfjsAnnotationType: PdfjsAnnotation.STAMP,
         subtype: 'Caret',
         isOnce: true,
         resizable: true,
@@ -440,7 +443,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         name: 'stamp',
         type: Annotation.STAMP,
         pdfjsEditorType: PdfjsAnnotationEditorType.STAMP,
-        pdfjsAnnotationType: PdfjsAnnotationType.STAMP,
+        pdfjsAnnotationType: PdfjsAnnotation.STAMP,
         subtype: 'Stamp',
         isOnce: true,
         resizable: true,

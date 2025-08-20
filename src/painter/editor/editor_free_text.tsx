@@ -1,236 +1,196 @@
 import Konva from 'konva'
-import { KonvaEventObject } from 'konva/lib/Node'
+import type { KonvaEventObject } from 'konva/lib/Node'
 
-import { AnnotationType, IAnnotationStore, IAnnotationStyle } from '../../const/definitions'
-import { Editor, IEditorOptions } from './editor'
-import React from 'react'
-import { Dropdown, InputRef, Modal } from 'antd'
-import TextArea from 'antd/es/input/TextArea'
+import { Annotation, type IAnnotationStore, type IAnnotationStyle } from '../../const/definitions'
+import { Editor, type IEditorOptions } from './editor'
+import { h, ref } from 'vue'
+import { Dropdown,  Modal } from 'ant-design-vue'
+import TextArea from 'ant-design-vue/es/input/TextArea'
 import { FontSizeIcon } from '../../const/icon'
 import './editor_free_text.scss'
 import i18n from 'i18next'
 import { defaultOptions } from '../../const/default_options'
 import { isSameColor } from '../../utils/utils'
 
+/**
+ * Vue3 版本的 setInputText
+ */
 export async function setInputText(color: string, fontSize: number): Promise<{ inputValue: string, color: string, fontSize: number }> {
-    let currentColor = color;
-    let currentFontSize = fontSize;
+    let currentColor = color
+    let currentFontSize = fontSize
     return new Promise(resolve => {
-        const placeholder = i18n.t('editor.text.startTyping');
-        let inputValue = '';
-        let status: '' | 'error' | 'warning' = 'error'; // 初始状态设置为错误，确保初始时提交按钮禁用
-        let modal: any;
-        const inputRef = React.createRef<InputRef>(); // 使用 React.createRef 以确保类型正确
+        const placeholder = i18n.t('editor.text.startTyping')
+        const inputValue = ref('')
+        const status = ref<'error' | ''>('error')
 
-        const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-            inputValue = e.target.value; // 更新输入值
-            status = inputValue.trim() !== '' ? '' : 'error'; // 根据输入内容更新状态
-            updateModalContent(); // 更新模态框内容
-        };
+        let modal: any
 
-        const updateModalContent = () => {
-            modal.update({
-                title: `${i18n.t('annotations.freeText')}-${currentFontSize}px`,
-                content: (
-                    <div>
-                        <TextArea
-                            ref={inputRef} status={status} placeholder={placeholder} onChange={handleChange}
-                            autoSize={{ minRows: 3, maxRows: 5 }}
-                        />
-                        <div className='EditorFreeText-Modal-Toolbar'>
-                            <div className="colorPalette">
-                                {defaultOptions.colors.map(color => (
-                                    <div onClick={() => handleColorChange(color)} className={`cell ${color === currentColor ? 'active' : ''}`} key={color}>
-                                        <span style={{ backgroundColor: color }}></span>
-                                    </div>
-                                ))}
-                            </div>
-                            <Dropdown menu={{
-                                items: defaultOptions.fontSize.map(size => ({
-                                    key: size.toString(),
-                                    label: size,
-                                    onClick: () => handleFontSizeChange(size)
-                                }))
-                            }} trigger={['click']}>
-                                <FontSizeIcon />
-                            </Dropdown>
-                        </div>
-                    </div>
-                ),
-                okButtonProps: {
-                    disabled: status === 'error',
-                },
-            });
-        };
+        const handleChange = (e: Event) => {
+            const target = e.target as HTMLTextAreaElement
+            inputValue.value = target.value
+            status.value = inputValue.value.trim() !== '' ? '' : 'error'
+            updateModalContent()
+        }
 
-        const handleColorChange = (color: string) => {
-            currentColor = color; // 更新当前颜色
-            updateModalContent();
-        };
+        const handleColorChange = (c: string) => {
+            currentColor = c
+            updateModalContent()
+        }
 
-        const handleFontSizeChange = (fontSize: number) => {
-            currentFontSize = fontSize;
-            updateModalContent();
-        };
+        const handleFontSizeChange = (size: number) => {
+            currentFontSize = size
+            updateModalContent()
+        }
 
-        modal = Modal.confirm({
-            title: `${i18n.t('annotations.freeText')}-${currentFontSize}px`,
-            icon: null,
-            content: (
-                <div className='EditorFreeText-Modal'>
-                    <TextArea
-                        ref={inputRef} status={status} placeholder={placeholder} onChange={handleChange}
-                        autoSize={{ minRows: 3, maxRows: 5 }}
-                    />
-                    <div className='EditorFreeText-Modal-Toolbar'>
-                        <div className="colorPalette">
-                            {defaultOptions.colors.map(color => (
-                                <div onClick={() => handleColorChange(color)} className={`cell ${isSameColor(color, currentColor) ? 'active' : ''}`} key={color}>
-                                    <span style={{ backgroundColor: color }}></span>
-                                </div>
-                            ))}
-                        </div>
-                        <Dropdown menu={{
+        const renderContent = () => {
+            return h('div', { class: 'EditorFreeText-Modal' }, [
+                h(TextArea, {
+                    value: inputValue.value,
+                    status: status.value,
+                    placeholder,
+                    autoSize: { minRows: 3, maxRows: 5 },
+                    onInput: handleChange
+                }),
+                h('div', { class: 'EditorFreeText-Modal-Toolbar' }, [
+                    h('div', { class: 'colorPalette' },
+                        defaultOptions.colors.map(c =>
+                            h('div', {
+                                key: c,
+                                class: ['cell', isSameColor(c, currentColor) ? 'active' : ''],
+                                onClick: () => handleColorChange(c)
+                            }, [h('span', { style: { backgroundColor: c } })])
+                        )
+                    ),
+                    h(Dropdown, {
+                        trigger: ['click'],
+                        menu: {
                             items: defaultOptions.fontSize.map(size => ({
                                 key: size.toString(),
                                 label: size,
                                 onClick: () => handleFontSizeChange(size)
                             }))
-                        }} trigger={['click']}>
-                            <FontSizeIcon />
-                        </Dropdown>
-                    </div>
-                </div>
-            ),
-            destroyOnClose: true,
+                        }
+                    }, {
+                        default: () => h(FontSizeIcon)
+                    })
+                ])
+            ])
+        }
+
+        const updateModalContent = () => {
+            modal.update({
+                title: `${i18n.t('annotations.freeText')}-${currentFontSize}px`,
+                content: renderContent(),
+                okButtonProps: { disabled: status.value === 'error' }
+            })
+        }
+
+        modal = Modal.confirm({
+            title: `${i18n.t('annotations.freeText')}-${currentFontSize}px`,
+            icon: null,
+            content: renderContent(),
+            // 移除 destroyOnClose 属性，因为它不是 ModalFuncProps 类型的有效属性
+            // destroyOnClose: true,
             okText: i18n.t('normal.ok'),
             cancelText: i18n.t('normal.cancel'),
-            okButtonProps: {
-                disabled: status === 'error',
-            },
+            okButtonProps: { disabled: status.value === 'error' },
             onOk: () => {
-                resolve({ inputValue, color: currentColor, fontSize: currentFontSize }); // 解析 Promise 并返回输入值
+                resolve({ inputValue: inputValue.value, color: currentColor, fontSize: currentFontSize })
             },
             onCancel: () => {
-                resolve({ inputValue: '', color: currentColor, fontSize: currentFontSize }); // 如果用户取消，则解析 Promise 并返回空字符串
+                resolve({ inputValue: '', color: currentColor, fontSize: currentFontSize })
             }
-        });
-        setTimeout(() => {
-            if (inputRef.current) {
-                inputRef.current.focus();
-            }
-        }, 100);
-    });
+        })
+    })
 }
 
 /**
  * EditorFreeText 是继承自 Editor 的自由文本编辑器类。
  */
 export class EditorFreeText extends Editor {
-    /**
-     * 创建一个 EditorFreeText 实例。
-     * @param EditorOptions 初始化编辑器的选项
-     */
     constructor(EditorOptions: IEditorOptions) {
-        super({ ...EditorOptions, editorType: AnnotationType.FREETEXT })
+        super({ ...EditorOptions, editorType: Annotation.FREETEXT })
     }
 
     protected mouseDownHandler() { }
     protected mouseMoveHandler() { }
 
-
-    /**
-     * 处理鼠标抬起事件，创建输入区域。
-     * @param e Konva 事件对象
-     */
     protected async mouseUpHandler(e: KonvaEventObject<PointerEvent>) {
         const pos = this.konvaStage.getRelativePointerPosition()
         const { x, y } = this.konvaStage.scale()
-        if (e.currentTarget !== this.konvaStage) {
-            return
-        }
+        if (e.currentTarget !== this.konvaStage) return
+
         this.isPainting = true
         this.currentShapeGroup = this.createShapeGroup()
         this.getBgLayer().add(this.currentShapeGroup.konvaGroup)
-        const { inputValue, color, fontSize } = await setInputText(this.currentAnnotation.style.color, this.currentAnnotation.style.fontSize)
-        this.inputDoneHandler(inputValue, { x, y }, pos, color, fontSize)
+
+        const { inputValue, color, fontSize } = await setInputText(
+            this.currentAnnotation?.style?.color ?? defaultOptions.colors[0],
+            this.currentAnnotation?.style?.fontSize ?? defaultOptions.fontSize[0]
+        )
+        if (pos) {
+            this.inputDoneHandler(inputValue, { x, y }, pos, color, fontSize)
+        }
     }
 
-    /**
-     * 处理输入完成后的操作。
-     * @param inputValue string 输入值
-     * @param scaleY Y 轴缩放比例
-     * @param pos 相对位置坐标
-     */
-    private async inputDoneHandler(inputValue: string, scale: { x: number; y: number }, pos: { x: number; y: number }, color: string, fontSize: number) {
-        const value = inputValue.trim();
+    private async inputDoneHandler(
+        inputValue: string,
+        _scale: { x: number; y: number },
+        pos: { x: number; y: number },
+        color: string,
+        fontSize: number
+    ) {
+        const value = inputValue.trim()
         if (value === '') {
-            this.delShapeGroup(this.currentShapeGroup.id);
-            this.currentShapeGroup = null;
-            return;
+            if (this.currentShapeGroup?.id) {
+                this.delShapeGroup(this.currentShapeGroup.id)
+            }
+            this.currentShapeGroup = null
+            return
         }
-        const tempText = new Konva.Text({
-            text: value,
-            fontSize: fontSize,
-            padding: 2
-        });
-        const textWidth = tempText.width();
-        const maxWidth = 300;
-        const finalWidth = textWidth > maxWidth ? maxWidth : textWidth;
+        const tempText = new Konva.Text({ text: value, fontSize, padding: 2 })
+        const textWidth = tempText.width()
+        const maxWidth = 300
+        const finalWidth = textWidth > maxWidth ? maxWidth : textWidth
+
         const text = new Konva.Text({
             x: pos.x,
             y: pos.y + 2,
             text: value,
             width: finalWidth,
-            fontSize: fontSize,
+            fontSize,
             fill: color,
             wrap: textWidth > maxWidth ? 'word' : 'none'
-        });
-        this.currentShapeGroup.konvaGroup.add(text)
+        })
+        this.currentShapeGroup?.konvaGroup.add(text)
 
-        const id = this.currentShapeGroup.konvaGroup.id()
-        this.setShapeGroupDone(
-            {
-                id,
-                contentsObj: {
-                    text: value,
-                },
-                color,
-                fontSize
-            }
-        )
+        const id = this.currentShapeGroup?.konvaGroup?.id() ?? ''
+        this.setShapeGroupDone({
+            id,
+            contentsObj: { text: value },
+            color,
+            fontSize
+        })
     }
 
-    /**
-         * @description 更改注释样式
-         * @param annotationStore
-         * @param styles
-         */
     protected changeStyle(annotationStore: IAnnotationStore, styles: IAnnotationStyle): void {
         const id = annotationStore.id
         const group = this.getShapeGroupById(id)
         if (group) {
             group.getChildren().forEach(shape => {
                 if (shape instanceof Konva.Text) {
-                    if (styles.color !== undefined) {
-                        shape.fill(styles.color)
-                    }
-                    if (styles.opacity !== undefined) {
-                        shape.opacity(styles.opacity)
-                    }
+                    if (styles.color !== undefined) shape.fill(styles.color)
+                    if (styles.opacity !== undefined) shape.opacity(styles.opacity)
                 }
             })
 
             const changedPayload: { konvaString: string; color?: string } = {
                 konvaString: group.toJSON()
             }
-
             if (styles.color !== undefined) {
                 changedPayload.color = styles.color
             }
-
             this.setChanged(id, changedPayload)
         }
     }
-
 }

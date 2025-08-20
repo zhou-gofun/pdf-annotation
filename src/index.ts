@@ -4,7 +4,7 @@ import { createApp } from 'vue'
 // 导入自定义侧边栏组件
 import CustomToolbar from './components/toolbar/CustomToolbar.vue'
 // import CustomSidebar from './components/CustomSidebar.vue'
-import { Painter } from './painter/painter'
+import { Painter } from './painter/index.ts'
 import { WebSelection } from './webselection/webselection'
 import { ActionsValue, type ActionValueType } from './actions/actions'
 import type { EventBus, PDFPageView, PDFViewerApplication } from 'pdfjs'
@@ -53,7 +53,7 @@ class ThirdPartyBase {
       [HASH_PARAMS_DEFAULT_EDITOR_ACTIVE]: defaultOptions.setting.HASH_PARAMS_DEFAULT_EDITOR_ACTIVE,
       [HASH_PARAMS_DEFAULT_SIDEBAR_OPEN]: defaultOptions.setting.HASH_PARAMS_DEFAULT_SIDEBAR_OPEN,
   };
-    this.painter = new Painter()
+    // this.painter = new Painter()
     this.WebSelection = new WebSelection({
       onSelect: (pageNumber: any, elements: any) => {
         if (this.currentAction) {
@@ -63,52 +63,52 @@ class ThirdPartyBase {
     })
 
     this.currentAction = null
-  //   this.painter = new Painter({
-  //     userName: this.getOption(HASH_PARAMS_USERNAME),
-  //     PDFViewerApplication: this.PDFJS_PDFViewerApplication,
-  //     PDFJS_EventBus: this.PDFJS_EventBus,
-  //     setDefaultMode: () => {
-  //         this.customToolbarRef.current.activeAnnotation(annotationDefinitions[0])
-  //     },
-  //     onWebSelectionSelected: range => {
-  //         this.customPopbarRef.current.open(range)
-  //     },
-  //     onStoreAdd: (annotation, isOriginal, currentAnnotation) => {
-  //         this.customCommentRef.current.addAnnotation(annotation)
-  //         if (isOriginal) return
-  //         if (currentAnnotation.isOnce) {
-  //             this.painter.selectAnnotation(annotation.id)
-  //         }
-  //         if (this.isCommentOpen()) {
-  //             // 如果评论栏已打开，则选中批注
-  //             this.customCommentRef.current.selectedAnnotation(annotation, true)
-  //         }
-  //     },
-  //     onStoreDelete: (id) => {
-  //         this.customCommentRef.current.delAnnotation(id)
-  //     },
-  //     onAnnotationSelected: (annotation, isClick, selectorRect) => {
-  //         this.customerAnnotationMenuRef.current.open(annotation, selectorRect)
-  //         if (isClick && this.isCommentOpen()) {
-  //             // 如果是点击事件并且评论栏已打开，则选中批注
-  //             this.customCommentRef.current.selectedAnnotation(annotation, isClick)
-  //         }
+    this.painter = new Painter({
+      userName: this.getOption(HASH_PARAMS_USERNAME),
+      PDFViewerApplication: this.PDFJS_PDFViewerApplication,
+      PDFJS_EventBus: this.PDFJS_EventBus,
+      setDefaultMode: () => {
+          this.customToolbarRef.current.activeAnnotation(annotationDefinitions[0])
+      },
+      onWebSelectionSelected: range => {
+          this.customPopbarRef.current.open(range)
+      },
+      onStoreAdd: (annotation, isOriginal, currentAnnotation) => {
+          this.customCommentRef.current.addAnnotation(annotation)
+          if (isOriginal) return
+          if (currentAnnotation.isOnce) {
+              this.painter.selectAnnotation(annotation.id)
+          }
+          if (this.isCommentOpen()) {
+              // 如果评论栏已打开，则选中批注
+              this.customCommentRef.current.selectedAnnotation(annotation, true)
+          }
+      },
+      onStoreDelete: (id) => {
+          this.customCommentRef.current.delAnnotation(id)
+      },
+      onAnnotationSelected: (annotation, isClick, selectorRect) => {
+          this.customerAnnotationMenuRef.current.open(annotation, selectorRect)
+          if (isClick && this.isCommentOpen()) {
+              // 如果是点击事件并且评论栏已打开，则选中批注
+              this.customCommentRef.current.selectedAnnotation(annotation, isClick)
+          }
 
-  //         this.connectorLine?.drawConnection(annotation, selectorRect)
-  //     },
-  //     onAnnotationChange: (annotation) => {
-  //         this.customCommentRef.current.updateAnnotation(annotation)
-  //     },
-  //     onAnnotationChanging: () => {
-  //         this.connectorLine?.clearConnection()
-  //         this.customerAnnotationMenuRef?.current?.close()
-  //     },
-  //     onAnnotationChanged: (annotation, selectorRect) => {
-  //         console.log('annotation changed', annotation)
-  //         this.connectorLine?.drawConnection(annotation, selectorRect)
-  //         this.customerAnnotationMenuRef?.current?.open(annotation, selectorRect)
-  //     },
-  // })
+          this.connectorLine?.drawConnection(annotation, selectorRect)
+      },
+      onAnnotationChange: (annotation) => {
+          this.customCommentRef.current.updateAnnotation(annotation)
+      },
+      onAnnotationChanging: () => {
+          this.connectorLine?.clearConnection()
+          this.customerAnnotationMenuRef?.current?.close()
+      },
+      onAnnotationChanged: (annotation, selectorRect) => {
+          console.log('annotation changed', annotation)
+          this.connectorLine?.drawConnection(annotation, selectorRect)
+          this.customerAnnotationMenuRef?.current?.open(annotation, selectorRect)
+      },
+  })
     this.init()
   }
 
