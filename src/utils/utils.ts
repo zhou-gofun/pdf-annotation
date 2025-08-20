@@ -222,7 +222,10 @@ function parsePageRanges(input: string): number[] | null {
     return Array.from(pages).sort((a, b) => a - b)
 }
 
-function convertToRGB(array: string | any[], index = 0) {
+function convertToRGB(array: string | any[] | null, index = 0) {
+    if (!array) {
+        return 'rgb(0,0,0)' // 默认黑色
+    }
     if (index < 0 || index * 3 + 2 >= array.length) {
         throw new Error('Index out of bounds')
     }
@@ -232,6 +235,8 @@ function convertToRGB(array: string | any[], index = 0) {
 
     return `rgb(${r}, ${g}, ${b})`
 }
+
+  
 
 function formatTimestamp(timestamp: string | number | Date) {
     const date = new Date(timestamp)

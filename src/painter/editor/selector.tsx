@@ -1,11 +1,11 @@
 import Konva from 'konva'
 
-import { IAnnotationStore } from '../../const/definitions'
+import type { IAnnotationStore } from '../../const/definitions'
 import { SELECTOR_HOVER_STYLE, SHAPE_GROUP_NAME } from '../const'
-import { KonvaCanvas } from '../index'
-import { Modal } from 'antd'
+import type { KonvaCanvas } from '../index.ts'
+import { Modal } from 'ant-design-vue'
 import i18n from 'i18next'
-import { IRect } from 'konva/lib/types'
+import type { IRect } from 'konva/lib/types'
 import { defaultOptions } from '../../const/default_options'
 /**
  * 定义选择器的选项接口
@@ -147,12 +147,15 @@ export class Selector {
                 Modal.confirm({
                     title: i18n.t('normal.deleteConfirm'),
                     type: 'warn',
-                    destroyOnClose: true,
+                    // 移除 destroyOnClose 属性，因为它不是 ModalFuncProps 类型的有效属性
+                    // destroyOnClose: true,
                     centered: true,
                     okText: i18n.t('normal.yes'),
                     cancelText: i18n.t('normal.no'),
                     onOk: () => {
-                        this.onDelete(this.currentTransformerId)
+                        if (this.currentTransformerId) {
+                            this.onDelete(this.currentTransformerId)
+                        }
                         this.clearTransformers()
                     }
                 })
@@ -196,8 +199,12 @@ export class Selector {
         if (!group) return
         this.clearTransformers() // 清除之前的变换器
         this.createTransformer(group, konvaStage, !isClick)
-        const selectorRect = this.transformerStore.get(group.id()).getClientRect()
-        this.onSelected(group.id(), isClick, selectorRect)
+        const transformer = this.transformerStore.get(group.id());
+        // 确保transformer存在后再获取clientRect
+        const selectorRect = transformer ? transformer.getClientRect() : null;
+        if (selectorRect) {
+            this.onSelected(group.id(), isClick, selectorRect)
+        }
     }
 
     /**
@@ -223,7 +230,7 @@ export class Selector {
             anchorStrokeWidth: 2,
             anchorSize: 8,
             padding: 1,
-            boundBoxFunc: (oldBox, newBox) => {
+            boundBoxFunc: (_oldBox, newBox) => {
                 newBox.width = Math.max(30, newBox.width)
                 return newBox
             }
@@ -414,22 +421,22 @@ export class Selector {
         this.onCancel()
     }
 
-    /**
-     * 激活指定变换器。
-     * @param transformerId - 要激活的变换器ID。
-     */
-    private activateTransformer(transformerId: string | null): void {
-        if (transformerId) {
-            const transformer = this.transformerStore.get(transformerId)
-            if (transformer) {
-                transformer.nodes().forEach(group => {
-                    if (group instanceof Konva.Group) {
-                        group.draggable(true)
-                    }
-                })
-            }
-        }
-    }
+    // /**
+    //  * 激活指定变换器。
+    //  * @param transformerId - 要激活的变换器ID。
+    //  */
+    // private activateTransformer(transformerId: string | null): void {
+    //     if (transformerId) {
+    //         const transformer = this.transformerStore.get(transformerId)
+    //         if (transformer) {
+    //             transformer.nodes().forEach(group => {
+    //                 if (group instanceof Konva.Group) {
+    //                     group.draggable(true)
+    //                 }
+    //             })
+    //         }
+    //     }
+    // }
 
     /**
      * 停用指定变换器。

@@ -5,7 +5,8 @@
     { "path": "./tsconfig.node.json" }
   ],
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ESNext",  // 或 ESNext
+    "lib": ["ESNext", "DOM"], 
     "module": "ESNext",
     "moduleResolution": "node",
     "esModuleInterop": true,

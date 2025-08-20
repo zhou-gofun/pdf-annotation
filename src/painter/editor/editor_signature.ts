@@ -1,18 +1,18 @@
 import Konva from 'konva'
-import { KonvaEventObject } from 'konva/lib/Node'
+import { type KonvaEventObject } from 'konva/lib/Node'
 
-import { AnnotationType, IAnnotationType } from '../../const/definitions'
+import { Annotation, type IAnnotationType } from '../../const/definitions'
 import { resizeImage, setCssCustomProperty } from '../../utils/utils'
 import { CURSOR_CSS_PROPERTY } from '../const'
-import { Editor, IEditorOptions } from './editor'
+import { Editor, type IEditorOptions } from './editor'
 import { defaultOptions } from '../../const/default_options'
 
 /**
  * EditorSignature 是继承自 Editor 的签名编辑器类。
  */
 export class EditorSignature extends Editor {
-    private signatureUrl: string // 签名图片的 URL
-    private signatureImage: Konva.Image // Konva.Image 对象用于显示签名图片
+    private signatureUrl: string  // 签名图片的 URL
+    private signatureImage: Konva.Image | undefined // Konva.Image 对象用于显示签名图片
 
     /**
      * 创建一个 EditorSignature 实例。
@@ -20,8 +20,8 @@ export class EditorSignature extends Editor {
      * @param defaultSignatureUrl 默认的签名图片 URL
      */
     constructor(EditorOptions: IEditorOptions, defaultSignatureUrl: string | null) {
-        super({ ...EditorOptions, editorType: AnnotationType.SIGNATURE }) // 调用父类的构造函数
-        this.signatureUrl = defaultSignatureUrl // 设置签名图片 URL
+        super({ ...EditorOptions, editorType: Annotation.SIGNATURE }) // 调用父类的构造函数
+        this.signatureUrl = defaultSignatureUrl ?? '' // 设置签名图片 URL，如果为 null 则使用空字符串
         if (defaultSignatureUrl) {
             this.createCursorImg() // 如果有默认签名图片 URL，则创建光标图像
         }
@@ -94,7 +94,7 @@ export class EditorSignature extends Editor {
         if (e.currentTarget !== this.konvaStage) {
             return // 如果事件不是在舞台上发生的，则直接返回
         }
-        this.signatureImage = null
+        this.signatureImage = undefined
         this.currentShapeGroup = this.createShapeGroup() // 创建新的形状组
         this.getBgLayer().add(this.currentShapeGroup.konvaGroup) // 将形状组添加到背景图层
         const pos = this.konvaStage.getRelativePointerPosition()
@@ -107,14 +107,16 @@ export class EditorSignature extends Editor {
 
             this.signatureImage = image
             this.signatureImage.setAttrs({
-                x: pos.x - crosshair.x,
-                y: pos.y - crosshair.y,
+                x: pos?.x ? pos.x - crosshair.x : 0,
+                y: pos?.y ? pos.y - crosshair.y : 0,
                 width: newWidth,
                 height: newHeight,
                 base64: this.signatureUrl
             })
-            this.currentShapeGroup.konvaGroup.add(this.signatureImage)
-            const id = this.currentShapeGroup.konvaGroup.id()
+            if (this.currentShapeGroup && this.signatureImage) {
+                this.currentShapeGroup.konvaGroup.add(this.signatureImage)
+            }
+            const id = this.currentShapeGroup?.konvaGroup?.id() ?? ''
             this.setShapeGroupDone({
                 id,
                 contentsObj: {
@@ -122,7 +124,7 @@ export class EditorSignature extends Editor {
                     image: this.signatureUrl
                 }
             })
-            this.signatureImage = null
+            this.signatureImage = undefined
         })
     }
 
@@ -134,7 +136,7 @@ export class EditorSignature extends Editor {
      */
     public activateWithSignature(konvaStage: Konva.Stage, annotation: IAnnotationType, signatureUrl: string | null) {
         super.activate(konvaStage, annotation) // 调用父类的激活方法
-        this.signatureUrl = signatureUrl // 设置签名图片 URL
+        this.signatureUrl = signatureUrl ?? '' // 设置签名图片 URL，如果为 null 则使用空字符串
         if (signatureUrl) {
             this.createCursorImg() // 如果有签名图片 URL，则创建光标图像
         }

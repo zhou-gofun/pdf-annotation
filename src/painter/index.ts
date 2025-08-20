@@ -1,15 +1,36 @@
-import type { PageViewport, PDFViewerApplication } from 'pdfjs'; // 导入 PageViewport 类型
+import type { EventBus, PageViewport, PDFPageView, PDFViewerApplication } from 'pdfjs'; // 导入 PageViewport 类型
  // 导入 PageViewport 类型
 // import { PageViewport, PDFViewerApplication } from 'pdfjs-dist/web/pdf_viewer'
 import './painter.scss'
 import Konva from 'konva'
-import { type IAnnotationType, Annotation } from '../const/definitions'
-import { CURSOR_CSS_PROPERTY, PAINTER_IS_PAINTING_STYLE, PAINTER_PAINTING_TYPE, PAINTER_WRAPPER_PREFIX } from './const'
-import { removeCssCustomProperty } from '../utils/utils'
-import { ActionsValue, type ActionValueType } from '../actions/actions'
+import type { AnnotationType, IAnnotationStore, IAnnotationStyle, IAnnotationType } from '../const/definitions.ts'
+import { annotationDefinitions, Annotation } from '../const/definitions.ts'
+import { CURSOR_CSS_PROPERTY, PAINTER_IS_PAINTING_STYLE, PAINTER_PAINTING_TYPE, PAINTER_WRAPPER_PREFIX } from './const.ts'
+import { removeCssCustomProperty } from '../utils/utils.ts'
+import { ActionsValue, type ActionValueType } from '../actions/actions.ts'
 import { Stage } from 'konva/lib/Stage'
-import { FreeText } from './freetext'
+import { FreeText } from './freetext.ts'
 import type { KonvaEventObject } from 'konva/lib/Node';
+
+import { Editor } from './editor/editor.ts'
+import { EditorCircle } from './editor/editor_circle.ts'
+import { EditorFreeHand } from './editor/editor_free_hand.ts'
+import { EditorFreeHighlight } from './editor/editor_free_highlight.ts'
+import { EditorFreeText } from './editor/editor_free_text.tsx'
+import { EditorHighLight } from './editor/editor_highlight.ts'
+import { EditorRectangle } from './editor/editor_rectangle.ts'
+import { EditorSignature } from './editor/editor_signature.ts'
+import { EditorStamp } from './editor/editor_stamp.tsx'
+import { EditorNote } from './editor/editor_note.ts'
+import { Selector } from './editor/selector.tsx'
+import { Store } from './store.ts'
+import { WebSelection } from './webSelection.ts'
+import { Transform } from './transform/transform.ts'
+import { EditorArrow } from './editor/editor_arrow.ts'
+import { EditorCloud } from './editor/editor_cloud.ts'
+import type { IRect } from 'konva/lib/types'
+
+
 import { ref } from 'vue'
 
 // const PAINTER_WRAPPER_PREFIX = 'painter_wrapper'
@@ -25,18 +46,118 @@ export interface KonvaCanvas {
     isActive: boolean
 }
 export class Painter {
+    private userName: string
+    private konvaCanvasStore: Map<number, KonvaCanvas> = new Map() // 存储 KonvaCanvas 实例
+    private editorStore: Map<string, Editor> = new Map() // 存储编辑器实例
+    private pdfViewerApplication: PDFViewerApplication // PDFViewerApplication 实例
+    private pdfjsEventBus: EventBus // PDF.js EventBus 实例
+    private webSelection: WebSelection // WebSelection 实例
     private currentAnnotation: IAnnotationType | null = null // 当前批注类型
+    private store: Store // 存储实例
+    private selector: Selector // 选择器实例
+    private transform: Transform // 转换器
+    private tempDataTransfer: string | null | undefined // 临时数据传输
+    public readonly setDefaultMode: () => void // 设置默认模式的函数引用
+    public readonly onWebSelectionSelected: (range: Range) => void
+    public readonly onStoreAdd: (annotationStore: IAnnotationStore, isOriginal: boolean, currentAnnotation: IAnnotationType) => void
+    public readonly onStoreDelete: (id: string) => void
+    public readonly onAnnotationSelected: (annotationStore: IAnnotationStore, isClick: boolean, selectorRect: IRect) => void
+    public readonly onAnnotationChange: (annotationStore: IAnnotationStore) => void
+    public readonly onAnnotationChanging: () => void // 批注正在更改的回调函数
+    public readonly onAnnotationChanged: (annotationStore: IAnnotationStore, selectorRect: IRect) => void // 批注已更改的回调函数
+
+
+    // private currentAnnotation: IAnnotationType | null = null // 当前批注类型
     private currentAction = ref<ActionValueType>(ActionsValue.None)
     private currentDrawGroup: Konva.Group | null = null
     private currentDrawShape: Konva.Shape | null = null
     private isPainting = false
     private konvaMap = new Map<number, Konva.Stage>()
     private annotationStoreMap = new Map<string, { pageNumber: number; json: string }>()
-    private vertex = { x: 0, y: 0 }
+    // 记录绘制起点坐标
+    private vertex: { x: number; y: number } = { x: 0, y: 0 }
     private PDFViewerApplication: PDFViewerApplication
-    private tempDataTransfer: string | null | undefined // 临时数据传输
+    // private tempDataTransfer: string | null | undefined // 临时数据传输
     // private konvaCanvasStore: Map<number, KonvaCanvas> = new Map() // 存储 KonvaCanvas 实例
+    | undefined
 
+    
+
+    constructor({
+        userName,
+        PDFViewerApplication,
+        PDFJS_EventBus,
+        setDefaultMode,
+        onWebSelectionSelected,
+        onStoreAdd,
+        onStoreDelete,
+        onAnnotationSelected,
+        onAnnotationChange,
+        onAnnotationChanging,
+        onAnnotationChanged
+    }: {
+        userName: string
+        PDFViewerApplication: PDFViewerApplication
+        PDFJS_EventBus: EventBus
+        setDefaultMode: () => void
+        onWebSelectionSelected: (range: Range) => void
+        onStoreAdd: (annotationStore: IAnnotationStore, isOriginal: boolean, currentAnnotation: IAnnotationType) => void
+        onStoreDelete: (id: string) => void
+        onAnnotationSelected: (annotationStore: IAnnotationStore, isClick: boolean, selectorRect: IRect) => void
+        onAnnotationChange: (annotationStore: IAnnotationStore) => void
+        onAnnotationChanging: () => void
+        onAnnotationChanged: (annotationStore: IAnnotationStore, selectorRect: IRect) => void
+    }) {
+        this.userName = userName
+        this.pdfViewerApplication = PDFViewerApplication // 初始化 PDFViewerApplication
+        this.pdfjsEventBus = PDFJS_EventBus // 初始化 PDF.js EventBus
+        this.setDefaultMode = setDefaultMode // 设置默认模式的函数
+        this.onWebSelectionSelected = onWebSelectionSelected
+        this.onStoreAdd = onStoreAdd
+        this.onStoreDelete = onStoreDelete
+        this.onAnnotationSelected = onAnnotationSelected
+        this.onAnnotationChange = onAnnotationChange
+        this.onAnnotationChanging = onAnnotationChanging // 批注正在更改的回调函数
+        this.onAnnotationChanged = onAnnotationChanged // 批注已更改的回调函数
+        this.store = new Store({ PDFViewerApplication }) // 初始化存储实例
+        this.selector = new Selector({
+            // 初始化选择器实例
+            konvaCanvasStore: this.konvaCanvasStore,
+            getAnnotationStore: (id: string): IAnnotationStore => {
+                const annotation = this.store.annotation(id)
+                if (!annotation) {
+                    throw new Error(`找不到ID为${id}的标注`)
+                }
+                return annotation
+            },
+            onSelected: (id, isClick, transformerRect) => {
+                const annotation = this.store.annotation(id)
+                if (!annotation) {
+                    throw new Error(`找不到ID为${id}的标注`)
+                }
+                this.onAnnotationSelected(annotation, isClick, transformerRect)
+            },
+            onChanged: async (id, groupString, _rawAnnotationStore, konvaClientRect, transformerRect) => {
+                const editor = this.findEditorForGroupId(id)
+                if (editor) {
+                    this.updateStore(id, { konvaString: groupString, konvaClientRect })
+                }
+                const annotation = this.store.annotation(id)
+                if (!annotation) {
+                    throw new Error(`找不到ID为${id}的标注`)
+                }
+                this.onAnnotationChanged(annotation, transformerRect)
+            },
+            onCancel: () => {
+                this.onAnnotationChanging() // 批注正在更改的回调
+            },
+            onDelete: id => {
+                this.deleteAnnotation(id, true)
+            }
+        })
+            
+        // this.PDFViewerApplication = (window as any).PDFViewerApplication
+    }
 
     private disablePainting(): void {
         this.setMode('default') // 设置默认模式
@@ -77,6 +198,39 @@ export class Painter {
             document.body.classList.add(`${PAINTER_PAINTING_TYPE}_${this.currentAnnotation?.type}`)
         }
     }
+
+    /**
+     * 保存到存储
+     */
+    private saveToStore(annotationStore: IAnnotationStore, isOriginal: boolean = false) {
+        const currentAnnotation = annotationDefinitions.find(item => item.pdfjsAnnotationType === annotationStore.pdfjsType)
+        this.onStoreAdd(this.store.save(annotationStore, isOriginal), isOriginal, currentAnnotation)
+    }
+
+    /**
+     * 更新存储
+     */
+    private updateStore(id: string, updates: Partial<IAnnotationStore>) {
+        this.onAnnotationChange(this.store.update(id, updates))
+    }
+
+    /**
+     * 根据组 ID 查找编辑器
+     * @param groupId - 组 ID
+     * @returns 编辑器实例
+     */
+    private findEditorForGroupId(groupId: string): Editor {
+        let editor: Editor = null
+        this.editorStore.forEach(_editor => {
+            if (_editor.shapeGroupStore?.has(groupId)) {
+                editor = _editor
+                return
+            }
+        })
+        return editor
+    }
+
+
     public activate(annotation: IAnnotationType | null, dataTransfer: string | null): void {
         this.currentAnnotation = annotation
         this.disablePainting()
@@ -110,9 +264,6 @@ export class Painter {
         // this.enablePainting()
     }
 
-    constructor() {
-        this.PDFViewerApplication = (window as any).PDFViewerApplication
-    }
 
     private createKonva({ container, viewport }: { container: HTMLDivElement; viewport: PageViewport }) {
         const konvaStage = new Konva.Stage({
@@ -295,224 +446,235 @@ export class Painter {
         this.currentDrawGroup = null
         this.isPainting = false
     }
-/**
+
+    
+    /**
+     * 根据页码和编辑器类型查找编辑器
+     * @param pageNumber - 页码
+     * @param editorType - 编辑器类型
+     * @returns 编辑器实例
+     */
+    private findEditor(pageNumber: number, editorType: AnnotationType): Editor | undefined {
+        return this.editorStore.get(`${pageNumber}_${editorType}`)
+    }
+    /**
      * 启用特定类型的编辑器
      * @param options - 包含 Konva Stage、页码和批注类型的对象
      */
-    // private enableEditor({ konvaStage, pageNumber, annotation }: { konvaStage: Konva.Stage; pageNumber: number; annotation: IAnnotationType }): void {
-    //     const storeEditor = this.findEditor(pageNumber, annotation.type) // 查找存储中的编辑器实例
-    //     if (storeEditor) {
-    //         if (storeEditor instanceof EditorSignature) {
-    //             storeEditor.activateWithSignature(konvaStage, annotation, this.tempDataTransfer) // 激活带有签名的编辑器
-    //             return
-    //         }
-    //         if (storeEditor instanceof EditorStamp) {
-    //             storeEditor.activateWithStamp(konvaStage, annotation, this.tempDataTransfer) // 激活带有图章的编辑器
-    //             return
-    //         }
-    //         storeEditor.activate(konvaStage, annotation) // 激活编辑器
-    //         return
-    //     }
-    //     let editor: Editor | null = null // 初始化编辑器为空
-    //     switch (annotation.type) {
-    //         case AnnotationType.FREETEXT:
-    //             editor = new EditorFreeText({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.RECTANGLE:
-    //             editor = new EditorRectangle({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.ARROW:
-    //             editor = new EditorArrow({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.CLOUD:
-    //             editor = new EditorCloud({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.CIRCLE:
-    //             editor = new EditorCircle({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.NOTE:
-    //             editor = new EditorNote({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: () => {}
-    //             })
-    //             break
-    //         case AnnotationType.FREEHAND:
-    //             editor = new EditorFreeHand({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.FREE_HIGHLIGHT:
-    //             editor = new EditorFreeHighlight({
-    //                 userName: this.userName,
-    //                 pdfViewerApplication: this.pdfViewerApplication,
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation,
-    //                 onAdd: annotationStore => {
-    //                     this.saveToStore(annotationStore)
-    //                 },
-    //                 onChange: (id, updates) => {
-    //                     this.updateStore(id, updates) // 更新存储
-    //                 }
-    //             })
-    //             break
-    //         case AnnotationType.SIGNATURE:
-    //             editor = new EditorSignature(
-    //                 {
-    //                     userName: this.userName,
-    //                     pdfViewerApplication: this.pdfViewerApplication,
-    //                     konvaStage,
-    //                     pageNumber,
-    //                     annotation,
-    //                     onAdd: annotationStore => {
-    //                         this.saveToStore(annotationStore)
-    //                     },
-    //                     onChange: () => {}
-    //                 },
-    //                 this.tempDataTransfer
-    //             )
-    //             break
-    //         case AnnotationType.STAMP:
-    //             editor = new EditorStamp(
-    //                 {
-    //                     userName: this.userName,
-    //                     pdfViewerApplication: this.pdfViewerApplication,
-    //                     konvaStage,
-    //                     pageNumber,
-    //                     annotation,
-    //                     onAdd: annotationStore => {
-    //                         this.saveToStore(annotationStore)
-    //                     },
-    //                     onChange: () => {}
-    //                 },
-    //                 this.tempDataTransfer
-    //             )
-    //             break
-    //         case AnnotationType.HIGHLIGHT:
-    //         case AnnotationType.UNDERLINE:
-    //         case AnnotationType.STRIKEOUT:
-    //             editor = new EditorHighLight(
-    //                 {
-    //                     userName: this.userName,
-    //                     pdfViewerApplication: this.pdfViewerApplication,
-    //                     konvaStage,
-    //                     pageNumber,
-    //                     annotation,
-    //                     onAdd: annotationStore => {
-    //                         this.saveToStore(annotationStore)
-    //                     },
-    //                     onChange: (id, updates) => {
-    //                         this.updateStore(id, updates) // 更新存储
-    //                     }
-    //                 },
-    //                 annotation.type
-    //             )
-    //             break
-    //         case AnnotationType.SELECT:
-    //             this.selector.activate(pageNumber) // 激活选择器
-    //             break
+    private enableEditor({ konvaStage, pageNumber, annotation }: { konvaStage: Konva.Stage; pageNumber: number; annotation: IAnnotationType }): void {
+        const storeEditor = this.findEditor(pageNumber, annotation.type) // 查找存储中的编辑器实例
+        if (storeEditor) {
+            if (storeEditor instanceof EditorSignature) {
+                storeEditor.activateWithSignature(konvaStage, annotation, this.tempDataTransfer ?? null) // 激活带有签名的编辑器
+                return
+            }
+            if (storeEditor instanceof EditorStamp) {
+                storeEditor.activateWithStamp(konvaStage, annotation, this.tempDataTransfer ?? null) // 激活带有图章的编辑器
+                return
+            }
+            storeEditor.activate(konvaStage, annotation) // 激活编辑器
+            return
+        }
+        let editor: Editor | null = null // 初始化编辑器为空
+        switch (annotation.type) {
+            case Annotation.FREETEXT:
+                editor = new EditorFreeText({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.RECTANGLE:
+                editor = new EditorRectangle({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.ARROW:
+                editor = new EditorArrow({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.CLOUD:
+                editor = new EditorCloud({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.CIRCLE:
+                editor = new EditorCircle({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.NOTE:
+                editor = new EditorNote({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: () => {}
+                })
+                break
+            case Annotation.FREEHAND:
+                editor = new EditorFreeHand({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.FREE_HIGHLIGHT:
+                editor = new EditorFreeHighlight({
+                    userName: this.userName,
+                    pdfViewerApplication: this.pdfViewerApplication,
+                    konvaStage,
+                    pageNumber,
+                    annotation,
+                    onAdd: annotationStore => {
+                        this.saveToStore(annotationStore)
+                    },
+                    onChange: (id, updates) => {
+                        this.updateStore(id, updates) // 更新存储
+                    }
+                })
+                break
+            case Annotation.SIGNATURE:
+                editor = new EditorSignature(
+                    {
+                        userName: this.userName,
+                        pdfViewerApplication: this.pdfViewerApplication,
+                        konvaStage,
+                        pageNumber,
+                        annotation,
+                        onAdd: annotationStore => {
+                            this.saveToStore(annotationStore)
+                        },
+                        onChange: () => {}
+                    },
+                    this.tempDataTransfer ?? null
+                )
+                break
+            case Annotation.STAMP:
+                editor = new EditorStamp(
+                    {
+                        userName: this.userName,
+                        pdfViewerApplication: this.pdfViewerApplication,
+                        konvaStage,
+                        pageNumber,
+                        annotation,
+                        onAdd: annotationStore => {
+                            this.saveToStore(annotationStore)
+                        },
+                        onChange: () => {}
+                    },
+                    this.tempDataTransfer ?? null
+                )
+                break
+            case Annotation.HIGHLIGHT:
+            case Annotation.UNDERLINE:
+            case Annotation.STRIKEOUT:
+                editor = new EditorHighLight(
+                    {
+                        userName: this.userName,
+                        pdfViewerApplication: this.pdfViewerApplication,
+                        konvaStage,
+                        pageNumber,
+                        annotation,
+                        onAdd: annotationStore => {
+                            this.saveToStore(annotationStore)
+                        },
+                        onChange: (id, updates) => {
+                            this.updateStore(id, updates) // 更新存储
+                        }
+                    },
+                    annotation.type
+                )
+                break
+            case Annotation.SELECT:
+                this.selector.activate(pageNumber) // 激活选择器
+                break
 
-    //         default:
-    //             console.warn(`未实现的批注类型: ${annotation.type}`)
-    //             return
-    //     }
+            default:
+                console.warn(`未实现的批注类型: ${annotation.type}`)
+                return
+        }
 
-    //     if (editor) {
-    //         this.editorStore.set(editor.id, editor) // 将编辑器实例存储到 editorStore
-    //     }
-    // }
+        if (editor) {
+            this.editorStore.set(editor.id, editor) // 将编辑器实例存储到 editorStore
+        }
+    }
     /**
      * 启用绘画
      */
-    // private enablePainting(): void {
-    //     this.konvaCanvasStore.forEach(({ konvaStage, pageNumber }) => {
-    //         // 遍历 KonvaCanvas 实例
-    //         if (this.currentAnnotation) {
-    //             this.enableEditor({
-    //                 konvaStage,
-    //                 pageNumber,
-    //                 annotation: this.currentAnnotation // 启用特定类型的编辑器
-    //             })
-    //         }
-    //     })
-    // }
+    private enablePainting(): void {
+        this.konvaCanvasStore.forEach(({ konvaStage, pageNumber }) => {
+            // 遍历 KonvaCanvas 实例
+            if (this.currentAnnotation) {
+                this.enableEditor({
+                    konvaStage,
+                    pageNumber,
+                    annotation: this.currentAnnotation // 启用特定类型的编辑器
+                })
+            }
+        })
+    }
     private saveAnnotationStore(drawGroup: Konva.Group, konvaStage: Stage, pageNumber: number) {
         const annotationStorageJson = drawGroup.toJSON()
         const annotationStorageId = `${PDFJS_AnnotationEditorPrefix}${this.annotationStoreMap.size}`
