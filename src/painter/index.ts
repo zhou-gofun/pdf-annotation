@@ -3,14 +3,10 @@ import type { EventBus, PageViewport, PDFPageView, PDFViewerApplication } from '
 // import { PageViewport, PDFViewerApplication } from 'pdfjs-dist/web/pdf_viewer'
 import './painter.scss'
 import Konva from 'konva'
-import type { AnnotationType, IAnnotationStore, IAnnotationStyle, IAnnotationType } from '../const/definitions.ts'
+import type { IAnnotationStore, IAnnotationStyle, IAnnotationType } from '../const/definitions.ts'
 import { annotationDefinitions, Annotation } from '../const/definitions.ts'
 import { CURSOR_CSS_PROPERTY, PAINTER_IS_PAINTING_STYLE, PAINTER_PAINTING_TYPE, PAINTER_WRAPPER_PREFIX } from './const.ts'
-import { removeCssCustomProperty } from '../utils/utils.ts'
-import { ActionsValue, type ActionValueType } from '../actions/actions.ts'
-import { Stage } from 'konva/lib/Stage'
-import { FreeText } from './freetext.ts'
-import type { KonvaEventObject } from 'konva/lib/Node';
+import { isElementInDOM, removeCssCustomProperty } from '../utils/utils.ts'
 
 import { Editor } from './editor/editor.ts'
 import { EditorCircle } from './editor/editor_circle.ts'
@@ -31,12 +27,6 @@ import { EditorCloud } from './editor/editor_cloud.ts'
 import type { IRect } from 'konva/lib/types'
 
 
-import { ref } from 'vue'
-
-// const PAINTER_WRAPPER_PREFIX = 'painter_wrapper'
-const PDFJS_AnnotationEditorPrefix = 'pdfjs_internal_editor_'
-
-
 
 // KonvaCanvas 接口定义
 export interface KonvaCanvas {
@@ -50,7 +40,6 @@ export class Painter {
     private konvaCanvasStore: Map<number, KonvaCanvas> = new Map() // 存储 KonvaCanvas 实例
     private editorStore: Map<string, Editor> = new Map() // 存储编辑器实例
     private pdfViewerApplication: PDFViewerApplication // PDFViewerApplication 实例
-    private pdfjsEventBus: EventBus // PDF.js EventBus 实例
     private webSelection: WebSelection // WebSelection 实例
     private currentAnnotation: IAnnotationType | null = null // 当前批注类型
     private store: Store // 存储实例
@@ -67,20 +56,9 @@ export class Painter {
     public readonly onAnnotationChanged: (annotationStore: IAnnotationStore, selectorRect: IRect) => void // 批注已更改的回调函数
 
 
-    // private currentAnnotation: IAnnotationType | null = null // 当前批注类型
-    private currentAction = ref<ActionValueType>(ActionsValue.None)
-    private currentDrawGroup: Konva.Group | null = null
-    private currentDrawShape: Konva.Shape | null = null
-    private isPainting = false
     private konvaMap = new Map<number, Konva.Stage>()
-    private annotationStoreMap = new Map<string, { pageNumber: number; json: string }>()
-    // 记录绘制起点坐标
-    private vertex: { x: number; y: number } = { x: 0, y: 0 }
-    private PDFViewerApplication: PDFViewerApplication
-    // private tempDataTransfer: string | null | undefined // 临时数据传输
-    // private konvaCanvasStore: Map<number, KonvaCanvas> = new Map() // 存储 KonvaCanvas 实例
-    | undefined
 
+    pdfjsEventBus: EventBus // PDF.js EventBus 实例
     
 
     constructor({
@@ -155,8 +133,123 @@ export class Painter {
                 this.deleteAnnotation(id, true)
             }
         })
+        this.webSelection = new WebSelection({
+            // 初始化 WebSelection 实例
+            onSelect: range => {
+                if (range) {
+                    this.onWebSelectionSelected(range)
+                }
+            },
+            onHighlight: selection => {
+                Object.keys(selection).forEach(key => {
+                    const pageNumber = Number(key)
+                    const elements = selection[pageNumber]
+                    const canvas = this.konvaCanvasStore.get(pageNumber)
+                    if (canvas) {
+                        const { konvaStage, wrapper } = canvas
+                        let storeEditor = this.findEditor(pageNumber, this.currentAnnotation?.type) as EditorHighLight
+                        if (!storeEditor) {
+                            storeEditor = new EditorHighLight(
+                                {
+                                    userName: this.userName,
+                                    pdfViewerApplication: this.pdfViewerApplication,
+                                    konvaStage,
+                                    pageNumber,
+                                    annotation: this.currentAnnotation,
+                                    onAdd: annotationStore => {
+                                        this.saveToStore(annotationStore)
+                                    },
+                                    onChange: (id, updates) => {
+                                        this.updateStore(id, updates) // 更新存储
+                                    }
+                                },
+                                this.currentAnnotation?.type ?? Annotation.HIGHLIGHT
+                            )
+                            this.editorStore.set(storeEditor.id, storeEditor)
+                        }
+                        if (elements) {
+                            storeEditor.convertTextSelection(elements, wrapper)
+                        }
+                    }
+                })
+            }
+        })
+        this.transform = new Transform(PDFViewerApplication)
+        this.bindGlobalEvents() // 绑定全局事件
             
         // this.PDFViewerApplication = (window as any).PDFViewerApplication
+    }
+
+    /**
+     * 绑定全局事件。
+     */
+    private bindGlobalEvents(): void {
+        window.addEventListener('keyup', this.globalKeyUpHandler) // 监听全局键盘事件
+    }
+    /**
+     * 全局键盘抬起事件处理器。
+     * @param e - 键盘事件。
+     */
+    private globalKeyUpHandler = (e: KeyboardEvent): void => {
+        if (e.code === 'Escape' && (this.currentAnnotation?.type === Annotation.SIGNATURE || this.currentAnnotation?.type === Annotation.STAMP)) {
+            removeCssCustomProperty(CURSOR_CSS_PROPERTY) // 移除自定义 CSS 属性
+            this.setDefaultMode() // 设置默认模式
+        }
+    }
+
+
+    /**
+     * 重新绘制批注
+     * @param pageNumber - 页码
+     */
+    private reDrawAnnotation(pageNumber: number): void {
+        const konvaCanvasStore = this.konvaCanvasStore.get(pageNumber) // 获取 KonvaCanvas 实例
+        const annotationStores = this.store.getByPage(pageNumber) // 获取指定页码的批注存储
+        annotationStores.forEach(annotationStore => {
+            let storeEditor = this.findEditor(pageNumber, annotationStore.type) // 查找编辑器实例
+            if (!storeEditor) {
+                // 如果编辑器不存在，启用编辑器
+                const annotationDefinition = annotationDefinitions.find(item => item.type === annotationStore.type)
+                if (konvaCanvasStore && konvaCanvasStore.konvaStage) {
+                    if (annotationDefinition) {
+                        this.enableEditor({ konvaStage: konvaCanvasStore.konvaStage, pageNumber, annotation: annotationDefinition })
+                    }
+                }
+                storeEditor = this.findEditor(pageNumber, annotationStore.type) // 重新查找编辑器
+            }
+
+            if (storeEditor) {
+                // 添加序列化组到图层
+                if (konvaCanvasStore?.konvaStage) {
+                    storeEditor.addSerializedGroupToLayer(konvaCanvasStore.konvaStage, annotationStore.konvaString)
+                }
+            }
+        })
+    }
+
+    /**
+     * 删除批注
+     * @param id - 批注 ID
+     */
+    private deleteAnnotation(id: string, emit: boolean = false): void {
+        const annotationStore = this.store.annotation(id)
+        // 检查 annotationStore 是否存在
+        if (!annotationStore) {
+            return;
+        }
+        const konvaCanvasStore = this.konvaCanvasStore.get(annotationStore.pageNumber) // 获取 KonvaCanvas 实例
+        // 检查 konvaCanvasStore 是否存在
+        if (!konvaCanvasStore) {
+            return;
+        }
+        this.store.delete(id)
+        const storeEditor = this.findEditor(annotationStore.pageNumber, annotationStore.type)
+        if (storeEditor) {
+            storeEditor.deleteGroup(id, konvaCanvasStore.konvaStage)
+        }
+        if (emit) {
+            this.onStoreDelete(id)
+        }
     }
 
     private disablePainting(): void {
@@ -183,6 +276,21 @@ export class Painter {
         this.tempDataTransfer = null
         return this.tempDataTransfer ?? ''
     }
+
+
+    /**
+     * 初始化或更新 KonvaCanvas
+     * @param params - 包含当前 PDF 页面视图、是否需要 CSS 转换和页码的对象
+     */
+    public initCanvas({ pageView, cssTransform, pageNumber }: { pageView: PDFPageView; cssTransform: boolean; pageNumber: number }): void {
+        if (cssTransform) {
+            this.scaleCanvas(pageView, pageNumber)
+        } else {
+            this.insertCanvas(pageView, pageNumber)
+        }
+    }
+
+
     private setMode(mode: 'painting' | 'default'): void {
         const isPainting = mode === 'painting' // 是否绘画模式
         document.body.classList.toggle(`${PAINTER_IS_PAINTING_STYLE}`, isPainting) // 添加或移除绘画模式样式
@@ -204,14 +312,19 @@ export class Painter {
      */
     private saveToStore(annotationStore: IAnnotationStore, isOriginal: boolean = false) {
         const currentAnnotation = annotationDefinitions.find(item => item.pdfjsAnnotationType === annotationStore.pdfjsType)
-        this.onStoreAdd(this.store.save(annotationStore, isOriginal), isOriginal, currentAnnotation)
+        if (currentAnnotation) {
+            this.onStoreAdd(this.store.save(annotationStore, isOriginal), isOriginal, currentAnnotation)
+        }
     }
 
     /**
      * 更新存储
      */
     private updateStore(id: string, updates: Partial<IAnnotationStore>) {
-        this.onAnnotationChange(this.store.update(id, updates))
+        const updatedStore = this.store.update(id, updates)
+        if (updatedStore) {
+            this.onAnnotationChange(updatedStore)
+        }
     }
 
     /**
@@ -220,16 +333,28 @@ export class Painter {
      * @returns 编辑器实例
      */
     private findEditorForGroupId(groupId: string): Editor {
-        let editor: Editor = null
+        let editor: Editor | undefined = undefined
         this.editorStore.forEach(_editor => {
             if (_editor.shapeGroupStore?.has(groupId)) {
                 editor = _editor
                 return
             }
         })
-        return editor
+        // 如果找不到编辑器则抛出错误
+        if (!editor) {
+            throw new Error('找不到对应的编辑器')
+        }
+        return editor as Editor
     }
 
+
+    /**
+     * 初始化 WebSelection
+     * @param rootElement - 根 DOM 元素
+     */
+    public initWebSelection(rootElement: HTMLDivElement): void {
+        this.webSelection.create(rootElement)
+    }
 
     public activate(annotation: IAnnotationType | null, dataTransfer: string | null): void {
         this.currentAnnotation = annotation
@@ -261,192 +386,135 @@ export class Painter {
                 break
         }
 
-        // this.enablePainting()
+        this.enablePainting()
     }
 
 
-    private createKonva({ container, viewport }: { container: HTMLDivElement; viewport: PageViewport }) {
-        const konvaStage = new Konva.Stage({
-            container,
-            width: viewport.width,
-            height: viewport.height,
-            scale: {
-                x: viewport.scale,
-                y: viewport.scale
-            }
-        })
+    /**
+     * 重置 PDF.js 批注存储
+     */
+    public resetPdfjsAnnotationStorage(): void {}
 
-        const bgLayer = new Konva.Layer()
-        konvaStage.add(bgLayer)
-        return konvaStage
+    /**
+     * @description 根据 range 加亮
+     * @param range
+     * @param annotation
+     */
+    public highlightRange(range: Range, annotation: IAnnotationType) {
+        this.currentAnnotation = annotation
+        this.webSelection.highlight(range)
     }
 
-    private drawJsonToKonva(pageNumber: number) {
-        this.annotationStoreMap.forEach(annotation => {
-            const konvaStage = this.konvaMap.get(pageNumber)
-            if (annotation.pageNumber === pageNumber && konvaStage) {
-                const newGroup = Konva.Node.create(annotation.json)
-                newGroup.opacity(0)
-                konvaStage.getLayers()[0].add(newGroup)
-                
-                new Konva.Tween({
-                    node: newGroup,
-                    opacity: 1,
-                    duration: 0.3
-                }).play()
-            }
-        })
+    /**
+     * @description 选中对应 ID 批注
+     * @param id
+     */
+    public selectAnnotation(id: string) {
+        this.setDefaultMode()
+        this.selector.select(id)
     }
 
-    private addEventListeners(konvaStage: Stage, pageNumber: number) {
-        const pointerDown = (e: KonvaEventObject<PointerEvent>) => {
-            if (e.evt.button === 0) this.pointerDownHandler(konvaStage, pageNumber, e)
-        }
-        
-        const pointerMove = () => {
-            if (this.isPainting) this.pointerMoveHandler(konvaStage, pageNumber)
-        }
-        
-        const pointerUp = (e: KonvaEventObject<PointerEvent>) => {
-            if (e.evt.button === 0) this.pointerUpHandler(konvaStage, pageNumber, e)
-        }
-
-        konvaStage.on('pointerdown', pointerDown)
-        konvaStage.on('pointermove', pointerMove)
-        konvaStage.on('pointerup', pointerUp)
-
-        // Return cleanup function
-        return () => {
-            konvaStage.off('pointerdown', pointerDown)
-            konvaStage.off('pointermove', pointerMove)
-            konvaStage.off('pointerup', pointerUp)
-        }
-    }
-
-    private pointerDownHandler(konvaStage: Stage, pageNumber: number, e: KonvaEventObject<PointerEvent>) {
-        this.currentDrawShape = null
-        this.isPainting = true
-        
-        this.currentDrawGroup = new Konva.Group({ draggable: false })
-        konvaStage.getLayers()[0].add(this.currentDrawGroup)
-        
-        const pos = konvaStage.getRelativePointerPosition()
-        // 确保pos不为null后再设置vertex
-        if (pos) {
-            this.vertex = { x: pos.x, y: pos.y }
-        }
-
-        switch (this.currentAction.value) {
-            case ActionsValue.Ellipse:
-                this.currentDrawShape = new Konva.Ellipse({
-                    radiusX: 0,
-                    radiusY: 0,
-                    x: pos?.x ?? 0, // 当pos为null时使用默认值0
-                    y: pos?.y ?? 0, // 当pos为null时使用默认值0
-                    stroke: 'red',
-                    strokeWidth: 4
-                })
-                this.currentDrawGroup.add(this.currentDrawShape)
-                break
-
-            case ActionsValue.Rect:
-                this.currentDrawShape = new Konva.Rect({
-                    x: pos?.x ?? 0, // 当pos为null时使用默认值0
-                    y: pos?.y ?? 0, // 当pos为null时使用默认值0
-                    width: 0,
-                    height: 0,
-                    stroke: 'green',
-                    strokeWidth: 4
-                })
-                this.currentDrawGroup.add(this.currentDrawShape)
-                break
-
-            case ActionsValue.Text:
-                new FreeText({
-                    konvaStage,
-                    textPos: pos ?? { x: 0, y: 0 }, // 当pos为null时使用默认值0
-                    inputPos: { x: e.evt.offsetX, y: e.evt.offsetY },
-                    color: 'blue',
-                    onAdd: textShape => {
-                        this.currentDrawGroup?.add(textShape)
-                        this.drawDone(konvaStage, pageNumber)
-                    },
-                    onCancel: () => {
-                        this.resetDrawingState()
-                    }
-                })
-                this.disable()
-                break
-        }
-    }
-
-    private pointerMoveHandler(konvaStage: Stage, _pageNumber: number) {
-        if (!this.isPainting || !this.currentDrawShape) return
-        
-        const pos = konvaStage.getRelativePointerPosition()
-        const radiusX = Math.abs((pos?.x ?? 0) - this.vertex.x) / 2
-        const radiusY = Math.abs((pos?.y ?? 0) - this.vertex.y) / 2
-
-        if (this.currentAction.value === ActionsValue.Ellipse && this.currentDrawShape instanceof Konva.Ellipse) {
-            this.currentDrawShape.setAttrs({
-                x: ((pos?.x ?? 0) - this.vertex.x) / 2 + this.vertex.x,
-                y: ((pos?.y ?? 0) - this.vertex.y) / 2 + this.vertex.y,
-                radiusX,
-                radiusY
+    /**
+     * @description 将annotation 存入 store, 包含外部 annotation 和 pdf 文件上的 annotation
+     */
+    public async initAnnotations(annotations: IAnnotationStore[], loadPdfAnnotation: boolean) {
+        // 加载 pdf 文件批注
+        if (loadPdfAnnotation) {
+            // 先将 pdf 文件中的存入
+            const annotationMap = await this.transform.decodePdfAnnotation()
+            annotationMap.forEach(annotation => {
+                this.saveToStore(annotation, true)
             })
-        }
-
-        if (this.currentAction.value === ActionsValue.Rect && this.currentDrawShape instanceof Konva.Rect) {
-            this.currentDrawShape.setAttrs({
-                x: Math.min(this.vertex.x, (pos?.x ?? 0)),
-                y: Math.min(this.vertex.y, (pos?.y ?? 0)),
-                width: Math.abs((pos?.x ?? 0) - this.vertex.x),
-                height: Math.abs((pos?.y ?? 0) - this.vertex.y)
-            })
-        }
-    }
-
-    private pointerUpHandler(konvaStage: Stage, pageNumber: number, e: KonvaEventObject<PointerEvent>) {
-        if (!this.isPainting) return
-        
-        const currentAction = this.currentAction.value
-        this.drawDone(konvaStage, pageNumber)
-
-        // 绘制圆形和矩形时主动插入text input
-        if ((currentAction === ActionsValue.Ellipse || currentAction === ActionsValue.Rect) && this.currentDrawGroup) {
-            new FreeText({
-                konvaStage,
-                textPos: konvaStage.getRelativePointerPosition() ?? { x: 0, y: 0 }, // 当pos为null时使用默认值0
-                inputPos: { x: e.evt.offsetX, y: e.evt.offsetY },
-                color: 'blue',
-                onAdd: textShape => {
-                    this.currentAction.value = ActionsValue.Text
-                    this.currentDrawGroup = new Konva.Group({ draggable: false })
-                    konvaStage.getLayers()[0].add(this.currentDrawGroup)
-                    this.currentDrawGroup.add(textShape)
-                    this.drawDone(konvaStage, pageNumber)
-                    this.currentAction.value = currentAction
-                },
-                onCancel: () => {
-                    this.resetDrawingState()
+            // 再用外部数据覆盖
+            annotations.forEach(annotation => {
+                if (annotationMap.has(annotation.id)) {
+                    this.updateStore(annotation.id, annotation)
+                } else {
+                    this.saveToStore(annotation, true)
                 }
             })
+        } else {
+            annotations.forEach(annotation => {
+                this.saveToStore(annotation, true)
+            })
         }
     }
 
-    private drawDone(konvaStage: Stage, pageNumber: number) {
-        if (this.currentDrawGroup) {
-            this.saveAnnotationStore(this.currentDrawGroup, konvaStage, pageNumber)
+    /**
+     * @description 更新 store
+     * @param id
+     * @param updates
+     */
+    public update(id: string, updates: Partial<IAnnotationStore>) {
+        this.store.update(id, updates)
+    }
+
+    /**
+     * @description 删除 annotation
+     * @param id
+     */
+    public delete(id: string, emit: boolean = false) {
+        this.selector.delete()
+        this.deleteAnnotation(id, emit)
+    }
+
+
+
+    /**
+     * @description 高亮选中 annotation
+     * @param annotation
+     */
+    public async highlight(annotation: IAnnotationStore) {
+        // 跳转至对应页面位置
+        const pageView = this.pdfViewerApplication.pdfViewer._pages[annotation.pageNumber - 1] || this.pdfViewerApplication.pdfViewer.getPageView(annotation.pageNumber)
+        const { x, y } = annotation.konvaClientRect
+        // 把 Konva 的左上角坐标转换为 PDF 内部坐标（以页面左下角为原点）
+        const [pdfX, pdfY] = pageView.viewport.convertToPdfPoint(x, y - 200)
+        this.pdfViewerApplication.pdfViewer.scrollPageIntoView({
+            pageNumber: annotation.pageNumber,
+            destArray: [null, { name: 'XYZ' }, pdfX, pdfY, null], // 可以加偏移
+            allowNegativeOffset: true
+        })
+
+        const maxRetries = 5 // 最大重试次数
+        const retryInterval = 200 // 每次重试间隔
+        // 封装递归重试机制
+        const attemptHighlight = (retries: number): void => {
+            const storeEditor = this.findEditor(annotation.pageNumber, annotation.type)
+            if (storeEditor) {
+                this.setDefaultMode()
+                this.selector.select(annotation.id)
+                if (this.currentAnnotation && this.currentAnnotation.type === Annotation.SELECT) {
+                    this.selector.activate(annotation.pageNumber)
+                }
+            } else if (retries > 0) {
+                // 如果没有找到且还有重试次数，继续重试
+                setTimeout(() => {
+                    attemptHighlight(retries - 1)
+                }, retryInterval)
+            } else {
+                console.error('Failed to find editor after maximum retries.')
+            }
         }
-        this.resetDrawingState()
+        // 初次尝试执行
+        attemptHighlight(maxRetries)
     }
 
-    private resetDrawingState() {
-        this.currentDrawShape = null
-        this.currentDrawGroup = null
-        this.isPainting = false
+    public getData() {
+        return this.store.annotations
     }
 
+    /**
+     * @description 更新样式
+     * @param annotationStore
+     * @param styles
+     */
+    public updateAnnotationStyle(annotationStore: IAnnotationStore, style: IAnnotationStyle) {
+        const editor = this.findEditorForGroupId(annotationStore.id)
+        if (editor) {
+            editor.updateStyle(annotationStore, style) // 更新编辑器样式
+        }
+    }
     
     /**
      * 根据页码和编辑器类型查找编辑器
@@ -454,7 +522,7 @@ export class Painter {
      * @param editorType - 编辑器类型
      * @returns 编辑器实例
      */
-    private findEditor(pageNumber: number, editorType: AnnotationType): Editor | undefined {
+    private findEditor(pageNumber: number, editorType: number | any): Editor | undefined {
         return this.editorStore.get(`${pageNumber}_${editorType}`)
     }
     /**
@@ -675,196 +743,87 @@ export class Painter {
             }
         })
     }
-    private saveAnnotationStore(drawGroup: Konva.Group, konvaStage: Stage, pageNumber: number) {
-        const annotationStorageJson = drawGroup.toJSON()
-        const annotationStorageId = `${PDFJS_AnnotationEditorPrefix}${this.annotationStoreMap.size}`
-        const { width, height } = konvaStage.size()
-        const { x: scaleX, y: scaleY } = konvaStage.scale()
-        const pageWidth = width / scaleX
-        const pageHeight = height / scaleY
+    
 
-        this.annotationStoreMap.set(annotationStorageId, { pageNumber, json: annotationStorageJson })
 
-        const shape = drawGroup.findOne((node: Konva.Node) => node.getType() === 'Shape')
-        if (!shape) return
-
-        const { attrs } = shape.toObject()
-
-        switch (this.currentAction.value) {
-            case ActionsValue.Rect: {
-                const { path, rect } = this.calculateRectPath(attrs.x ?? 0, attrs.y ?? 0, attrs.width ?? 0, attrs.height ?? 0, pageWidth, pageHeight)
-                this.saveRectAnnotation(annotationStorageId, pageNumber, path, rect)
-                break
-            }
-            case ActionsValue.Ellipse: {
-                const { path, rect } = this.calculateEllipsePath(attrs.x ?? 0, attrs.y ?? 0, attrs.radiusX ?? 0, attrs.radiusY ?? 0, pageWidth, pageHeight)
-                this.saveEllipseAnnotation(annotationStorageId, pageNumber, path, rect)
-                break
-            }
-            case ActionsValue.Highlight: {
-                this.saveHighlightAnnotations(drawGroup, annotationStorageId, pageNumber, pageWidth, pageHeight)
-                break
-            }
-            case ActionsValue.Text: {
-                const height = shape.height() + 10
-                const { rect } = this.calculateFreeTextRect(attrs.x ?? 0, attrs.y ?? 0, attrs.width ?? 0, height, pageWidth, pageHeight)
-                this.saveTextAnnotation(annotationStorageId, pageNumber, rect, attrs.text)
-                break
-            }
-        }
+    
+    /**
+     * 创建绘图容器 (painterWrapper)
+     * @param pageView - 当前 PDF 页面视图
+     * @param pageNumber - 当前页码
+     * @returns 绘图容器元素
+     */
+    private createPainterWrapper(pageView: PDFPageView, pageNumber: number): HTMLDivElement {
+        const wrapper = document.createElement('div') // 创建 div 元素作为绘图容器
+        wrapper.id = `${PAINTER_WRAPPER_PREFIX}_page_${pageNumber}` // 设置 id
+        wrapper.classList.add(PAINTER_WRAPPER_PREFIX) // 添加类名
+        pageView.div.appendChild(wrapper)
+        return wrapper
     }
 
-    private saveRectAnnotation(id: string, pageNumber: number, path: number[], rect: number[]) {
-        this.PDFViewerApplication.pdfDocument.annotationStorage.setValue(id, {
-            annotationType: 15,
-            color: [0, 128, 0],
-            thickness: 4,
-            opacity: 1,
-            paths: [{ bezier: path, points: path }],
-            pageIndex: pageNumber - 1,
-            rect,
-            rotation: 0
+    /**
+     * 创建 Konva Stage
+     * @param container - 绘图容器元素
+     * @param viewport - 当前 PDF 页面视口
+     * @returns Konva Stage
+     */
+    private createKonvaStage(container: HTMLDivElement, viewport: PageViewport): Konva.Stage {
+        const stage = new Konva.Stage({
+            container,
+            width: viewport.width,
+            height: viewport.height,
+            scale: { x: viewport.scale, y: viewport.scale }
         })
+
+        const backgroundLayer = new Konva.Layer()
+        stage.add(backgroundLayer)
+
+        return stage
     }
 
-    private saveEllipseAnnotation(id: string, pageNumber: number, path: number[], rect: number[]) {
-        this.PDFViewerApplication.pdfDocument.annotationStorage.setValue(id, {
-            annotationType: 15,
-            color: [255, 0, 0],
-            thickness: 4,
-            opacity: 1,
-            paths: [{ bezier: path, points: path }],
-            pageIndex: pageNumber - 1,
-            rect,
-            rotation: 0
-        })
-    }
-
-    private saveHighlightAnnotations(group: Konva.Group, baseId: string, pageNumber: number, pageWidth: number, pageHeight: number) {
-        const allHighlight = group.getChildren(node => node.getType() === 'Shape')
-        allHighlight.forEach((shape, index) => {
-            const { attrs } = shape
-            const { outlines, rect } = this.calculateHighlightPath(attrs.x, attrs.y, attrs.width, attrs.height, pageWidth, pageHeight)
-            this.PDFViewerApplication.pdfDocument.annotationStorage.setValue(`${baseId}_${index}`, {
-                annotationType: 9,
-                color: [255, 255, 0],
-                opacity: 0.6,
-                quadPoints: outlines,
-                outlines: [outlines],
-                rect,
-                pageIndex: pageNumber - 1,
-                rotation: 0
-            })
-        })
-    }
-
-    private saveTextAnnotation(id: string, pageNumber: number, rect: number[], text: string) {
-        this.PDFViewerApplication.pdfDocument.annotationStorage.setValue(id, {
-            annotationType: 3,
-            fontSize: 14,
-            color: [0, 0, 255],
-            rect,
-            pageIndex: pageNumber - 1,
-            rotation: 0,
-            value: text
-        })
-    }
-
-    private calculateFreeTextRect(x: number, y: number, width: number, height: number, _canvasWidth: number, canvasHeight: number) {
-        const topRightX = x + width
-        const topRightY = y
-        const bottomRightY = y + height
-        const rect = [x, canvasHeight - bottomRightY, topRightX, canvasHeight - topRightY]
-        return { rect }
-    }
-
-    private calculateHighlightPath(x: number, y: number, width: number, height: number, _canvasWidth: number, canvasHeight: number) {
-        const topRightX = x + width
-        const bottomRightY = y + height
-        const rect = [x, canvasHeight - bottomRightY, topRightX, canvasHeight - y]
-        const outlines = [x, canvasHeight - y, x, canvasHeight - bottomRightY, topRightX, canvasHeight - bottomRightY, topRightX, canvasHeight - y]
-        return { outlines, rect }
-    }
-
-    private calculateRectPath(x: number, y: number, width: number, height: number, _canvasWidth: number, canvasHeight: number) {
-        const halfInterval = 0.5
-        const points: number[] = []
-        const rectBottomRightX = x + width
-        const rectBottomRightY = y + height
-        const rect = [x, canvasHeight - y, rectBottomRightX, canvasHeight - rectBottomRightY]
-
-        // 添加左边缘上的点
-        for (let i = y; i < rectBottomRightY; i += halfInterval) {
-            points.push(x, canvasHeight - i)
-        }
-
-        // 添加底边缘上的点
-        for (let i = x + halfInterval; i < rectBottomRightX; i += halfInterval) {
-            points.push(i, canvasHeight - rectBottomRightY)
-        }
-
-        // 添加右边缘上的点
-        for (let i = rectBottomRightY - halfInterval; i >= y; i -= halfInterval) {
-            points.push(rectBottomRightX, canvasHeight - i)
-        }
-
-        // 添加顶边缘上的点
-        for (let i = rectBottomRightX - halfInterval; i >= x + halfInterval; i -= halfInterval) {
-            points.push(i, canvasHeight - y)
-        }
-
-        return { path: points, rect }
-    }
-
-    private calculateEllipsePath(x: number, y: number, radiusX: number, radiusY: number, _canvasWidth: number, canvasHeight: number) {
-        const halfInterval = 0.5
-        const points: number[] = []
-
-        for (let angle = 0; angle <= 360; angle += halfInterval) {
-            const radians = (angle * Math.PI) / 180
-            const pointX = x + radiusX * Math.cos(radians)
-            const pointY = y + radiusY * Math.sin(radians)
-            points.push(pointX, canvasHeight - pointY)
-        }
-
-        const rect = [x - radiusX * 2, canvasHeight - (y + radiusY * 2), x + radiusX * 2, canvasHeight - (y - radiusY * 2)]
-        return { path: points, rect }
-    }
-
-    public insertCanvas({ pageDiv, viewport, pageNumber }: { pageDiv: HTMLDivElement; viewport: PageViewport; pageNumber: number }) {
-        const painterWrapper = document.createElement('div')
-        const { style } = painterWrapper
-
-        style.width = `calc(var(--scale-factor) * ${viewport.viewBox[2]}px)`
-        style.height = `calc(var(--scale-factor) * ${viewport.viewBox[3]}px)`
-        painterWrapper.id = `${PAINTER_WRAPPER_PREFIX}_page_${pageNumber}`
-        painterWrapper.classList.add(PAINTER_WRAPPER_PREFIX)
-
-        pageDiv.append(painterWrapper)
-        const konvaStage = this.createKonva({ container: painterWrapper, viewport })
-        this.konvaMap.set(pageNumber, konvaStage)
-        this.drawJsonToKonva(pageNumber)
-    }
-
-    public scaleCanvas({ viewport, pageNumber }: { viewport: PageViewport; pageNumber: number }) {
-        const konvaStage = this.konvaMap.get(pageNumber)
-        if (konvaStage) {
-            konvaStage.scale({ x: viewport.scale, y: viewport.scale })
-            konvaStage.width(viewport.width)
-            konvaStage.height(viewport.height)
-        }
-    }
-
-    public enable(actionsValue: ActionValueType) {
-        this.currentAction.value = actionsValue
-        this.konvaMap.forEach((konvaStage, pageNumber) => {
-            const wrapper = document.querySelector(`#${PAINTER_WRAPPER_PREFIX}_page_${pageNumber}`) as HTMLDivElement
-            if (wrapper) {
-                wrapper.style.zIndex = '999'
-                this.addEventListeners(konvaStage, pageNumber)
+    /**
+     * 清理无效的 canvasStore
+     */
+    private cleanUpInvalidStore(): void {
+        this.konvaCanvasStore.forEach(konvaCanvas => {
+            if (!isElementInDOM(konvaCanvas.wrapper)) {
+                konvaCanvas.konvaStage.destroy()
+                this.konvaCanvasStore.delete(konvaCanvas.pageNumber)
             }
         })
     }
+    /**
+     * 插入新的绘图容器和 Konva Stage
+     * @param pageView - 当前 PDF 页面视图
+     * @param pageNumber - 当前页码
+     */
+    private insertCanvas(pageView: PDFPageView, pageNumber: number): void {
+        this.cleanUpInvalidStore()
+        const painterWrapper = this.createPainterWrapper(pageView, pageNumber)
+        const konvaStage = this.createKonvaStage(painterWrapper, pageView.viewport)
+
+        this.konvaCanvasStore.set(pageNumber, { pageNumber, konvaStage, wrapper: painterWrapper, isActive: false })
+        this.reDrawAnnotation(pageNumber) // 重绘批注
+        this.enablePainting() // 启用绘画
+    }
+
+    /**
+     * 调整现有 KonvaCanvas 的缩放
+     * @param pageView - 当前 PDF 页面视图
+     * @param pageNumber - 当前页码
+     */
+    private scaleCanvas(pageView: PDFPageView, pageNumber: number): void {
+        const konvaCanvas = this.konvaCanvasStore.get(pageNumber)
+        if (!konvaCanvas) return
+
+        const { konvaStage } = konvaCanvas
+        const { scale, width, height } = pageView.viewport
+
+        konvaStage.scale({ x: scale, y: scale })
+        konvaStage.width(width)
+        konvaStage.height(height)
+    }
+
 
     public disable() {
         this.konvaMap.forEach((konvaStage, pageNumber) => {
@@ -879,67 +838,4 @@ export class Painter {
         })
     }
 
-    public drawWebSelectionToKonva(pageNumber: number, actionsValue: ActionValueType, elements: HTMLElement[]) {
-        const konvaStage = this.konvaMap.get(pageNumber)
-        const wrapper = document.querySelector(`#${PAINTER_WRAPPER_PREFIX}_page_${pageNumber}`) as HTMLDivElement
-        
-        if (!konvaStage || !wrapper) return
-
-        this.currentDrawGroup = new Konva.Group({ draggable: false })
-        this.currentAction.value = actionsValue
-        konvaStage.getLayers()[0].add(this.currentDrawGroup)
-
-        elements.forEach(spanEl => {
-            const bounding = spanEl.getBoundingClientRect()
-            const fixBounding = wrapper.getBoundingClientRect()
-            const scale = konvaStage.scale()
-            
-            const x0 = (bounding.x - fixBounding.x) / scale.x
-            const y0 = (bounding.y - fixBounding.y) / scale.y
-            const x1 = bounding.width / scale.x
-            const y1 = bounding.height / scale.y
-
-            let shape: Konva.Shape | null = null
-
-            switch (actionsValue) {
-                case ActionsValue.Highlight:
-                    shape = new Konva.Rect({
-                        x: x0,
-                        y: y0,
-                        width: x1,
-                        height: y1,
-                        opacity: 0.6,
-                        fill: 'yellow'
-                    })
-                    break
-                    
-                case ActionsValue.Underline:
-                    shape = new Konva.Line({
-                        points: [x0, y0 + y1, x0 + x1, y0 + y1],
-                        stroke: 'blue',
-                        hitStrokeWidth: 20,
-                        strokeWidth: 2
-                    })
-                    break
-                    
-                case ActionsValue.Strikeout:
-                    shape = new Konva.Line({
-                        points: [x0, y0 + y1 / 2, x0 + x1, y0 + y1 / 2],
-                        stroke: 'red',
-                        hitStrokeWidth: 20,
-                        strokeWidth: 2
-                    })
-                    break
-            }
-
-            if (shape) {
-                this.currentDrawGroup?.add(shape)
-            }
-        })
-
-        if (this.currentDrawGroup) {
-            this.saveAnnotationStore(this.currentDrawGroup, konvaStage, pageNumber)
-        }
-        this.currentDrawGroup = null
-    }
 }

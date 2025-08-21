@@ -17,7 +17,7 @@ export class EditorHighLight extends Editor {
     // constructor(EditorOptions: IEditorOptions, editorType: AnnotationType) {
     //     super({ ...EditorOptions, editorType })
     // }
-    constructor(EditorOptions: IEditorOptions, editorType: AnnotationType) {
+    constructor(EditorOptions: IEditorOptions, editorType: number) {
         super({ ...EditorOptions, editorType: Annotation.HIGHLIGHT })
     }
 
