@@ -1,235 +1,538 @@
-// import 'element-ui/lib/theme-chalk/index.css'
-// import './scss/app.scss'
-import { createApp } from 'vue'
-// 导入自定义侧边栏组件
-import CustomToolbar from './components/toolbar/CustomToolbar.vue'
-// import CustomSidebar from './components/CustomSidebar.vue'
-import { Painter } from './painter/index.ts'
-import { WebSelection } from './webselection/webselection'
-import { ActionsValue, type ActionValueType } from './actions/actions'
-import type { EventBus, PDFPageView, PDFViewerApplication } from 'pdfjs'
-import { HASH_PARAMS_DEFAULT_EDITOR_ACTIVE, HASH_PARAMS_DEFAULT_SIDEBAR_OPEN, HASH_PARAMS_GET_URL, HASH_PARAMS_POST_URL, HASH_PARAMS_USERNAME } from './const/definitions'
-// import i18n from 'i18next'
-import { defaultOptions } from './const/default_options'
-import { ConnectorLine } from './painter/connectorLine.ts'
-// import { createI18n } from 'vue-i18n'
-import { initializeI18n } from './locale/index.ts'
-import i18n from './locale/index.ts'
-// import Antd from 'ant-design-vue'
+import './scss/app.scss'
+import 'ant-design-vue/dist/reset.css'
 
+import type { EventBus, PDFPageView, PDFViewerApplication } from 'pdfjs'
+import { initializeI18n } from './locale/index'
+import { SyncOutlined } from '@ant-design/icons-vue'
+import { t } from 'i18next'
+import { annotationDefinitions, HASH_PARAMS_DEFAULT_EDITOR_ACTIVE, HASH_PARAMS_DEFAULT_SIDEBAR_OPEN, HASH_PARAMS_GET_URL, HASH_PARAMS_POST_URL, HASH_PARAMS_USERNAME, type IAnnotationStore, type IAnnotationStyle, type IAnnotationType } from './const/definitions'
+import { Painter } from './painter'
+import { once, parseQueryString, hashArrayOfObjects } from './utils/utils'
+import { defaultOptions } from './const/default_options'
+import { exportAnnotationsToExcel, exportAnnotationsToPdf } from './annot/index'
+import { ConnectorLine } from './painter/connectorLine'
+
+// Vue3
+import { createApp, ref, h, type Ref } from 'vue'
+// 按需引入 Ant Design Vue 组件
+import { 
+  Button, 
+  Modal, 
+  Space, 
+  message, 
+  Popover, 
+  Form, 
+  Input, 
+  Select, 
+  Row, 
+  Col, 
+  Radio, 
+  Checkbox, 
+  Divider,
+  Typography,
+  Dropdown,
+  Upload
+} from 'ant-design-vue'
+import i18n from './locale/index'
+// Vue components
+import CustomPopbar from './components/popbar.vue'
+import CustomToolbar from './components/toolbar/CustomToolbar.vue'
+import CustomComment from './components/comment/index.vue'
+import CustomAnnotationMenu from './components/menu/index.vue'
 
 interface AppOptions {
-  [key: string]: string;
+  [key: string]: string
 }
-class ThirdPartyBase {
+
+// 创建配置好的 Vue 应用实例的辅助函数 - 体积最小化版本
+function createConfiguredApp(component: any, props: any) {
+  const app = createApp(component, props)
+  
+  // 只安装实际使用的组件，避免全量安装
+  const components = [Button, Modal, Space, Popover, Form, Input, Select, Row, Col, Radio, Checkbox, Divider, Typography, Dropdown, Upload]
+  components.forEach(comp => app.use(comp))
+  
+  // 最小化 message 服务配置
+  app.config.globalProperties.$message = message
+  
+  // 安装 i18n（已经是轻量级配置）
+  app.use(i18n)
+  
+  return app
+}
+
+class PdfjsAnnotationExtension {
   PDFJS_PDFViewerApplication: PDFViewerApplication
   PDFJS_EventBus: EventBus
+  $PDFJS_outerContainer: HTMLDivElement
+  $PDFJS_mainContainer: HTMLDivElement
   $PDFJS_sidebarContainer: HTMLDivElement
   $PDFJS_toolbar_container: HTMLDivElement
+  $PDFJS_viewerContainer: HTMLDivElement
 
-  customToolbarRef: any
-  customSidebarRef: any
+  customToolbarRef: Ref<any>
+  customPopbarRef: Ref<any>
+  customerAnnotationMenuRef: Ref<any>
+  customCommentRef: Ref<any>
 
   painter: Painter
   appOptions: AppOptions
-  WebSelection: WebSelection
-  currentAction: typeof ActionsValue | null
+  loadEnd: boolean
+  initialDataHash: number | null
   _connectorLine: ConnectorLine | null = null
 
   constructor() {
+    this.loadEnd = false
+    this.initialDataHash = null
+
     this.PDFJS_PDFViewerApplication = (window as any).PDFViewerApplication
     this.PDFJS_EventBus = this.PDFJS_PDFViewerApplication.eventBus
     this.$PDFJS_sidebarContainer = this.PDFJS_PDFViewerApplication.appConfig.sidebar.sidebarContainer
     this.$PDFJS_toolbar_container = this.PDFJS_PDFViewerApplication.appConfig.toolbar.container
+    this.$PDFJS_viewerContainer = this.PDFJS_PDFViewerApplication.appConfig.viewerContainer
+    this.$PDFJS_mainContainer = this.PDFJS_PDFViewerApplication.appConfig.mainContainer
+    this.$PDFJS_outerContainer = this.PDFJS_PDFViewerApplication.appConfig.sidebar.outerContainer
 
-    this.customToolbarRef = null
-    this.customSidebarRef = null
+    // Vue3 ref
+    this.customToolbarRef = ref()
+    this.customPopbarRef = ref()
+    this.customerAnnotationMenuRef = ref()
+    this.customCommentRef = ref()
+
+    // i18n
     initializeI18n(this.PDFJS_PDFViewerApplication.l10n.getLanguage())
+
     this.appOptions = {
-      [HASH_PARAMS_USERNAME]: "user", // 默认用户名,
-      // [HASH_PARAMS_USERNAME]: i18n.t('normal.unknownUser'), // 默认用户名,
-      [HASH_PARAMS_GET_URL]: defaultOptions.setting.HASH_PARAMS_GET_URL, // 默认 GET URL
-      [HASH_PARAMS_POST_URL]: defaultOptions.setting.HASH_PARAMS_POST_URL, // 默认 POST URL
+      [HASH_PARAMS_USERNAME]: i18n.global.t('normal.unknownUser'),
+      [HASH_PARAMS_GET_URL]: defaultOptions.setting.HASH_PARAMS_GET_URL,
+      [HASH_PARAMS_POST_URL]: defaultOptions.setting.HASH_PARAMS_POST_URL,
       [HASH_PARAMS_DEFAULT_EDITOR_ACTIVE]: defaultOptions.setting.HASH_PARAMS_DEFAULT_EDITOR_ACTIVE,
       [HASH_PARAMS_DEFAULT_SIDEBAR_OPEN]: defaultOptions.setting.HASH_PARAMS_DEFAULT_SIDEBAR_OPEN,
-  };
-    // this.painter = new Painter()
-    this.WebSelection = new WebSelection({
-      onSelect: (pageNumber: any, elements: any) => {
-        if (this.currentAction) {
-          this.painter.drawWebSelectionToKonva(pageNumber, this.currentAction as unknown as ActionValueType, elements)
-        }
-      }
-    })
+    }
 
-    this.currentAction = null
+    this.parseHashParams()
+
     this.painter = new Painter({
       userName: this.getOption(HASH_PARAMS_USERNAME),
       PDFViewerApplication: this.PDFJS_PDFViewerApplication,
       PDFJS_EventBus: this.PDFJS_EventBus,
       setDefaultMode: () => {
-          this.customToolbarRef.current.activeAnnotation(annotationDefinitions[0])
+        this.customToolbarRef.value?.activeAnnotation(annotationDefinitions[0])
       },
       onWebSelectionSelected: range => {
-          this.customPopbarRef.current.open(range)
+        this.customPopbarRef.value?.open(range)
       },
       onStoreAdd: (annotation, isOriginal, currentAnnotation) => {
-          this.customCommentRef.current.addAnnotation(annotation)
-          if (isOriginal) return
-          if (currentAnnotation.isOnce) {
-              this.painter.selectAnnotation(annotation.id)
-          }
-          if (this.isCommentOpen()) {
-              // 如果评论栏已打开，则选中批注
-              this.customCommentRef.current.selectedAnnotation(annotation, true)
-          }
+        this.customCommentRef.value?.addAnnotation(annotation)
+        if (isOriginal) return
+        if (currentAnnotation.isOnce) {
+          this.painter.selectAnnotation(annotation.id)
+        }
+        if (this.isCommentOpen()) {
+          this.customCommentRef.value?.selectedAnnotation(annotation, true)
+        }
       },
-      onStoreDelete: (id) => {
-          this.customCommentRef.current.delAnnotation(id)
+      onStoreDelete: id => {
+        this.customCommentRef.value?.delAnnotation(id)
       },
       onAnnotationSelected: (annotation, isClick, selectorRect) => {
-          this.customerAnnotationMenuRef.current.open(annotation, selectorRect)
-          if (isClick && this.isCommentOpen()) {
-              // 如果是点击事件并且评论栏已打开，则选中批注
-              this.customCommentRef.current.selectedAnnotation(annotation, isClick)
-          }
-
-          this.connectorLine?.drawConnection(annotation, selectorRect)
+        this.customerAnnotationMenuRef.value?.open(annotation, selectorRect)
+        if (isClick && this.isCommentOpen()) {
+          this.customCommentRef.value?.selectedAnnotation(annotation, isClick)
+        }
+        this.connectorLine?.drawConnection(annotation, selectorRect)
       },
-      onAnnotationChange: (annotation) => {
-          this.customCommentRef.current.updateAnnotation(annotation)
+      onAnnotationChange: annotation => {
+        this.customCommentRef.value?.updateAnnotation(annotation)
       },
       onAnnotationChanging: () => {
-          this.connectorLine?.clearConnection()
-          this.customerAnnotationMenuRef?.current?.close()
+        this.connectorLine?.clearConnection()
+        this.customerAnnotationMenuRef.value?.close()
       },
       onAnnotationChanged: (annotation, selectorRect) => {
-          console.log('annotation changed', annotation)
-          this.connectorLine?.drawConnection(annotation, selectorRect)
-          this.customerAnnotationMenuRef?.current?.open(annotation, selectorRect)
+        this.connectorLine?.drawConnection(annotation, selectorRect)
+        this.customerAnnotationMenuRef.value?.open(annotation, selectorRect)
       },
-  })
+    })
+
     this.init()
   }
 
-  private init() {
-    this.coverStyle()
-    this.bindPdfjsEvent()
-    // this.renderToolbar()
-    this.PDFJS_PDFViewerApplication.initializedPromise.then(() => {
-      this.renderToolbar()
-      // this.renderSidebar()
-    })
+  get connectorLine(): ConnectorLine | null {
+    if (defaultOptions.connectorLine.ENABLED) {
+      this._connectorLine = new ConnectorLine({})
+    }
+    return this._connectorLine
   }
 
-  private coverStyle() {
-    document.body.classList.add('ThirdPartyBase_Style')
+  private init() {
+    this.addCustomStyle()
+    this.bindPdfjsEvents()
+    this.renderToolbar()
+    this.renderPopBar()
+    this.renderAnnotationMenu()
+    this.renderComment()
   }
-  // private setOption(name: string, value: string) {
-  //     this.appOptions[name] = value
-  // }
+
+  private parseHashParams() {
+    const hash = document.location.hash.substring(1)
+    if (!hash) return
+    const params = parseQueryString(hash)
+    if (params.has(HASH_PARAMS_USERNAME)) {
+      const username = params.get(HASH_PARAMS_USERNAME)
+      if (username) {
+        this.setOption(HASH_PARAMS_USERNAME, username)
+      }
+    }
+    if (params.has(HASH_PARAMS_GET_URL)) {
+      const getUrl = params.get(HASH_PARAMS_GET_URL)
+      if (getUrl) {
+        this.setOption(HASH_PARAMS_GET_URL, getUrl)
+      }
+    }
+    if (params.has(HASH_PARAMS_POST_URL)) {
+      const postUrl = params.get(HASH_PARAMS_POST_URL)
+      if (postUrl) {
+        this.setOption(HASH_PARAMS_POST_URL, postUrl)
+      }
+    }
+  }
+
+  private setOption(name: string, value: string) {
+    this.appOptions[name] = value
+  }
 
   private getOption(name: string) {
-      return this.appOptions[name]
+    return this.appOptions[name]
   }
-  /**
-   * @description 渲染自定义工具栏
-   */
+
+  private addCustomStyle() {
+    document.body.classList.add('PdfjsAnnotationExtension')
+    this.toggleComment(this.getOption(HASH_PARAMS_DEFAULT_SIDEBAR_OPEN) === 'true')
+  }
+
+  private toggleComment(open: boolean) {
+    if (open) {
+      document.body.classList.remove('PdfjsAnnotationExtension_Comment_hidden')
+    } else {
+      document.body.classList.add('PdfjsAnnotationExtension_Comment_hidden')
+    }
+  }
+
+  private isCommentOpen(): boolean {
+    return !document.body.classList.contains('PdfjsAnnotationExtension_Comment_hidden')
+  }
+
+  // Vue3 组件挂载
   private renderToolbar() {
-    const toolbar = document.createElement('div')
-    this.$PDFJS_toolbar_container.insertAdjacentElement('afterend', toolbar)
-  
-    const defaultAnnotation = this.getOption(HASH_PARAMS_DEFAULT_EDITOR_ACTIVE)
-    const sidebarOpen = this.getOption(HASH_PARAMS_DEFAULT_SIDEBAR_OPEN)
-  
-    const app = createApp(CustomToolbar, {
-      defaultAnnotationName: defaultAnnotation === "null" ? null : defaultAnnotation,
-      defaultSidebarOpen: sidebarOpen === "true",
+    const el = document.createElement('div')
+    this.$PDFJS_toolbar_container.insertAdjacentElement('afterend', el)
+    createConfiguredApp(CustomToolbar, {
+      ref: this.customToolbarRef,
+      defaultAnnotationName: this.getOption(HASH_PARAMS_DEFAULT_EDITOR_ACTIVE),
+      defaultSidebarOpen: this.getOption(HASH_PARAMS_DEFAULT_SIDEBAR_OPEN) === 'true',
       userName: this.getOption(HASH_PARAMS_USERNAME),
-      onChange: (currentAnnotation: any, dataTransfer: any) => {
+      onChange: (currentAnnotation: IAnnotationType | null, dataTransfer: string | null) => {
         this.painter.activate(currentAnnotation, dataTransfer)
       },
       onSave: () => this.saveData(),
       onExport: async (type: string) => {
-        if (type === 'excel') return this.exportExcel()
-        if (type === 'pdf') return this.exportPdf()
+        if (type === 'excel') {
+          this.exportExcel()
+        } else if (type === 'pdf') {
+          await this.exportPdf()
+        }
       },
       onSidebarOpen: (isOpen: boolean) => {
         this.toggleComment(isOpen)
         this.connectorLine?.clearConnection()
-      }
-    })
-  
-    // app.use(Antd)
-    app.use(i18n) // ⚠️ 必须加
-    this.customToolbarRef = app.mount(toolbar)
+      },
+    }).mount(el)
   }
 
-  exportPdf() {
-    throw new Error('Method not implemented.')
+  private renderPopBar() {
+    const el = document.createElement('div')
+    this.$PDFJS_viewerContainer.insertAdjacentElement('afterend', el)
+    createConfiguredApp(CustomPopbar, {
+      ref: this.customPopbarRef,
+      onChange: (currentAnnotation: IAnnotationType, range: Range) => {
+        this.painter.highlightRange(range, currentAnnotation)
+      },
+    }).mount(el)
   }
-  exportExcel() {
-    throw new Error('Method not implemented.')
-  }
-  saveData() {
-    throw new Error('Method not implemented.')
-  }
-  /**
-     * @description 切换评论栏的显示状态
-     * @param open 
-     */
-  private toggleComment(open: boolean): void {
-    if (open) {
-        document.body.classList.remove('PdfjsAnnotationExtension_Comment_hidden')
-    } else {
-        document.body.classList.add('PdfjsAnnotationExtension_Comment_hidden')
-    }
-  }
-  get connectorLine(): ConnectorLine | null {
-    if (defaultOptions.connectorLine.ENABLED) {
-        this._connectorLine = new ConnectorLine({})
-    }
-    return this._connectorLine
-  }
-  
 
-  // private renderSidebar() {
-  //   const sidebarContainer = document.createElement('div')
-  //   this.$PDFJS_sidebarContainer.insertAdjacentElement('afterend', sidebarContainer)
-  
-  //   // 直接在 createApp 时传 props
-  //   const app = createApp(CustomSidebar, {
-  //     onClick: (index: number) => {
-  //       this.PDFJS_PDFViewerApplication.page = index + 1
-  //     }
-  //   })
-  
-  //   app.use(Antd)
-  //   this.customSidebarRef = app.mount(sidebarContainer)
-  // }
+  private renderAnnotationMenu() {
+    const el = document.createElement('div')
+    this.$PDFJS_outerContainer.insertAdjacentElement('afterend', el)
+    createConfiguredApp(CustomAnnotationMenu, {
+      ref: this.customerAnnotationMenuRef,
+      onOpenComment: (annotation: any) => {
+        this.toggleComment(true)
+        this.customToolbarRef.value?.toggleSidebarBtn(true)
+        setTimeout(() => {
+          this.customCommentRef.value?.selectedAnnotation(annotation, true)
+        }, 100)
+      },
+      onChangeStyle: (annotation: IAnnotationStore, style: IAnnotationStyle) => {
+        this.painter.updateAnnotationStyle(annotation, style)
+        this.customToolbarRef.value?.updateStyle(annotation.type, style)
+      },
+      onDelete: (annotation: { id: string }) => {
+        this.painter.delete(annotation.id, true)
+      },
+    }).mount(el)
+  }
 
-  private bindPdfjsEvent() {
-    this.PDFJS_EventBus._on('pagerendered', async ({ source, cssTransform, pageNumber }: { source: PDFPageView; cssTransform: boolean; pageNumber: number }) => {
-      if (cssTransform) {
-        this.painter.scaleCanvas({
-          viewport: source.viewport,
-          pageNumber: source.id
+  private renderComment() {
+    const el = document.createElement('div')
+    this.$PDFJS_mainContainer.insertAdjacentElement('afterend', el)
+    createConfiguredApp(CustomComment, {
+      ref: this.customCommentRef,
+      userName: this.getOption(HASH_PARAMS_USERNAME),
+      onSelected: async (annotation: IAnnotationStore) => {
+        await this.painter.highlight(annotation)
+      },
+      onDelete: (id: string) => {
+        this.painter.delete(id)
+      },
+      onUpdate: (annotation: { id: string; title: any; contentsObj: any; comments: any }) => {
+        this.painter.update(annotation.id, {
+          title: annotation.title,
+          contentsObj: annotation.contentsObj,
+          comments: annotation.comments,
         })
-        return
+      },
+      onScroll: () => {
+        this.connectorLine?.clearConnection()
+      },
+    }).mount(el)
+  }
+
+    /**
+     * @description 隐藏 PDF.js 编辑模式按钮
+     */
+    private hidePdfjsEditorModeButtons(): void {
+      defaultOptions.setting.HIDE_PDFJS_ELEMENT.forEach(item => {
+          const element = document.querySelector(item) as HTMLElement;
+          if (element) {
+              element.style.display = 'none';
+              const nextDiv = element.nextElementSibling as HTMLElement;
+              if (nextDiv.classList.contains('horizontalToolbarSeparator')) {
+                  nextDiv.style.display = 'none'
+              }
+          }
+      });
+  }
+
+  private updatePdfjs() {
+      const currentScaleValue = this.PDFJS_PDFViewerApplication.pdfViewer.currentScaleValue
+      if (
+          currentScaleValue === 'auto' ||
+          currentScaleValue === 'page-fit' ||
+          currentScaleValue === 'page-width'
+      ) {
+          this.PDFJS_PDFViewerApplication.pdfViewer.currentScaleValue = '0.8'
+          this.PDFJS_PDFViewerApplication.pdfViewer.update()
+      } else {
+          this.PDFJS_PDFViewerApplication.pdfViewer.currentScaleValue = 'auto'
+          this.PDFJS_PDFViewerApplication.pdfViewer.update()
       }
-      this.painter.insertCanvas({
-        pageNumber: source.id,
-        pageDiv: source.div,
-        viewport: source.viewport
+      this.PDFJS_PDFViewerApplication.pdfViewer.currentScaleValue = currentScaleValue
+      this.PDFJS_PDFViewerApplication.pdfViewer.update()
+  }
+
+  /**
+   * @description 绑定 PDF.js 相关事件
+   */
+  private bindPdfjsEvents(): void {
+      this.hidePdfjsEditorModeButtons()
+      const setLoadEnd = once(() => {
+          this.loadEnd = true
       })
-      this.WebSelection.disable()
-      this.WebSelection.create(source.div, pageNumber)
+
+      // 视图更新时隐藏菜单
+      this.PDFJS_EventBus._on('updateviewarea', () => {
+          this.customerAnnotationMenuRef.value?.close()
+          this.connectorLine?.clearConnection()
+      })
+
+      // 监听页面渲染完成事件
+      this.PDFJS_EventBus._on(
+          'pagerendered',
+          async ({ source, cssTransform, pageNumber }: { source: PDFPageView; cssTransform: boolean; pageNumber: number }) => {
+              setLoadEnd()
+              this.painter.initCanvas({ pageView: source, cssTransform, pageNumber })
+          }
+      )
+
+      // 监听文档加载完成事件
+      this.PDFJS_EventBus._on('documentloaded', async () => {
+          this.painter.initWebSelection(this.$PDFJS_viewerContainer)
+          const data = await this.getData()
+          this.initialDataHash = hashArrayOfObjects(data)
+          await this.painter.initAnnotations(data, defaultOptions.setting.LOAD_PDF_ANNOTATION)
+          if (this.loadEnd) {
+              this.updatePdfjs()
+          }
+      })
+  }
+
+  /**
+   * @description 获取外部批注数据
+   * @returns 
+   */
+  private async getData(): Promise<any[]> {
+      const getUrl = this.getOption(HASH_PARAMS_GET_URL);
+      if (!getUrl) {
+          return [];
+      }
+      try {
+          message.open({
+              type: 'loading',
+              content: t('normal.processing'),
+              duration: 0,
+          });
+          const response = await fetch(getUrl, { method: 'GET' });
+
+          if (!response.ok) {
+              const errorMessage = `HTTP Error ${response.status}: ${response.statusText || 'Unknown Status'}`;
+              throw new Error(errorMessage);
+          }
+          return await response.json();
+      } catch (error) {
+          Modal.error({
+              content: t('load.fail', { value: (error as Error)?.message }),
+              closable: false,
+              okButtonProps: {
+                  loading: false
+              },
+              okText: t('normal.ok')
+          })
+          console.error('Fetch error:', error);
+          return [];
+      } finally {
+          message.destroy();
+      }
+  }
+
+    
+  /**
+   * @description 保存批注数据
+   */
+  private async saveData(): Promise<void> {
+    const dataToSave = this.painter.getData()
+    console.log(
+      '%c [ dataToSave ]',
+      'font-size:13px; background:#d10d00; color:#ff5144;',
+      dataToSave,
+    )
+
+    const postUrl = this.getOption(HASH_PARAMS_POST_URL)
+    if (!postUrl) {
+      message.error({
+        content: t('save.noPostUrl', { value: HASH_PARAMS_POST_URL }),
+        key: 'save',
+      })
+      return
+    }
+
+    const modal = Modal.info({
+      content: h(Space, null, {
+        default: () => [h(SyncOutlined, { spin: true }), t('save.start')],
+      }),
+      closable: false,
+      okButtonProps: {
+        loading: true,
+      },
+      okText: t('normal.ok'),
     })
 
-    this.PDFJS_EventBus._on('pagechanging', ({ pageNumber }: { pageNumber: number }) => {
-      console.log(`pagechanging: ${pageNumber}`)
+    try {
+      const response = await fetch(postUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSave),
+      })
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to save PDF. Status: ${response.status} ${response.statusText}`,
+        )
+      }
+
+      const result = await response.json()
+      this.initialDataHash = hashArrayOfObjects(dataToSave)
+
+      modal.destroy()
+      message.success({
+        content: t('save.success'),
+        key: 'save',
+      })
+      console.log('Saved successfully:', result)
+    } catch (error: any) {
+      modal.update({
+        type: 'error',
+        content: error?.message || t('save.fail', { value: '' }),
+        closable: true,
+        okButtonProps: {
+          loading: false,
+        },
+      })
+      console.error('Error while saving data:', error)
+    }
+  }
+  private async exportPdf() {
+    const dataToSave = this.painter.getData()
+  
+    const modal = Modal.info({
+      title: t('normal.export'),
+      content: h(Space, null, {
+        default: () => [h(SyncOutlined, { spin: true }), t('normal.processing')],
+      }),
+      closable: false,
+      okButtonProps: {
+        loading: true,
+      },
+      okText: t('normal.ok'),
     })
+  
+    await exportAnnotationsToPdf(this.PDFJS_PDFViewerApplication, dataToSave)
+  
+    modal.update({
+      type: 'success',
+      title: t('normal.export'),
+      content: t('pdf.generationSuccess'),
+      closable: true,
+      okButtonProps: {
+        loading: false,
+      },
+    })
+  }
+
+  private async exportExcel() {
+      const annotations = this.painter.getData()
+      await exportAnnotationsToExcel(this.PDFJS_PDFViewerApplication, annotations)
+      Modal.info({
+          type: 'success',
+          title: t('normal.export'),
+          content: t('pdf.generationSuccess'),
+          closable: true,
+          okButtonProps: {
+              loading: false
+          },
+      })
+  }
+
+  public hasUnsavedChanges(): boolean {
+      return hashArrayOfObjects(this.painter.getData()) !== this.initialDataHash
+  }
+
+}
+
+declare global {
+  interface Window {
+    pdfjsAnnotationExtensionInstance: PdfjsAnnotationExtension
   }
 }
 
-new ThirdPartyBase()
+window.pdfjsAnnotationExtensionInstance = new PdfjsAnnotationExtension()

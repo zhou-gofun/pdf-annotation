@@ -18,6 +18,17 @@ const languageMap: { [key: string]: string } = {
   'de-de': 'de'
 }
 
+// 创建轻量级 i18n 实例
+const i18n = createI18n({
+  legacy: false,          // 使用 Composition API 模式
+  locale: 'en',           // 默认语言
+  fallbackLocale: 'en',   // 回退语言
+  messages,
+  globalInjection: false, // 禁用全局注入，减少体积
+  silentFallbackWarn: true, // 静默回退警告
+  silentTranslationWarn: true // 静默翻译警告
+})
+
 // 初始化 i18n 实例
 export const initializeI18n = (lng: string) => {
   let mappedLng = lng.toLowerCase()
@@ -27,13 +38,5 @@ export const initializeI18n = (lng: string) => {
 
   i18n.global.locale.value = mappedLng as 'en' | 'zh' | 'de'
 }
-
-// 创建 i18n 实例
-const i18n = createI18n({
-  legacy: false,          // 使用 Composition API 模式
-  locale: 'en',           // 默认语言
-  fallbackLocale: 'en',   // 回退语言
-  messages
-})
 
 export default i18n

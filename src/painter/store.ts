@@ -8,7 +8,8 @@ export class Store {
     private annotationStore: Map<string, IAnnotationStore> = new Map()
     // 原有注释
     private originalAnnotationStore: Map<string, IAnnotationStore> = new Map()
-    private pdfViewerApplication: PDFViewerApplication
+    public pdfViewerApplication: PDFViewerApplication
+    
 
     constructor({ PDFViewerApplication }: { PDFViewerApplication: PDFViewerApplication }) {
         this.pdfViewerApplication = PDFViewerApplication

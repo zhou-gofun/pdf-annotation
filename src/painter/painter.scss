@@ -1,4 +1,4 @@
-.painter_wrapper {
+.PdfjsAnnotationExtension_painter_wrapper {
     position: absolute;
     text-align: initial;
     top: 0;
@@ -11,19 +11,54 @@
     z-index: 1;
 }
 
-.painter_input {
-    font-family: Arial !important;
-    width: auto;
-    position: absolute;
-    z-index: 999;
-    padding: 0;
-    margin: 0;
-    overflow: hidden;
-    background: transparent;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-    user-select: text;
-    word-break: normal;
-    font-weight: normal;
-    font-style: normal;
+.PdfjsAnnotationExtension_selector_hover {
+    .PdfjsAnnotationExtension_painter_wrapper {
+        cursor: pointer !important;
+    }
+}
+
+.PdfjsAnnotationExtension_is_painting {
+    .PdfjsAnnotationExtension_painter_wrapper {
+        z-index: 999;
+    }
+}
+
+.PdfjsAnnotationExtension_painting_type_1,
+.PdfjsAnnotationExtension_painting_type_2,
+.PdfjsAnnotationExtension_painting_type_3 {
+    .textLayer {
+        &:not(.free) span {
+            cursor: var(--editorHighlight-editing-cursor);
+        }
+    }
+}
+
+.PdfjsAnnotationExtension_painting_type_4,
+.PdfjsAnnotationExtension_painting_type_5,
+.PdfjsAnnotationExtension_painting_type_6,
+.PdfjsAnnotationExtension_painting_type_11,
+.PdfjsAnnotationExtension_painting_type_12,
+.PdfjsAnnotationExtension_painting_type_13 {
+    .PdfjsAnnotationExtension_painter_wrapper {
+        cursor: crosshair;
+    }
+}
+
+.PdfjsAnnotationExtension_painting_type_7 {
+    .PdfjsAnnotationExtension_painter_wrapper {
+        cursor: var(--editorInk-editing-cursor);
+    }
+}
+
+.PdfjsAnnotationExtension_painting_type_8 {
+    .PdfjsAnnotationExtension_painter_wrapper {
+        cursor: var(--editorFreeHighlight-editing-cursor);
+    }
+}
+
+.PdfjsAnnotationExtension_painting_type_9,
+.PdfjsAnnotationExtension_painting_type_10 {
+    .PdfjsAnnotationExtension_painter_wrapper {
+        cursor: var(--PdfjsAnnotationExtension-image-cursor);
+    }
 }

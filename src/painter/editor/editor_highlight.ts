@@ -1,7 +1,7 @@
 import Konva from 'konva'
 // import { type KonvaEventObject } from 'konva/lib/Node'
 
-import type { AnnotationType, IAnnotationStore, IAnnotationStyle } from '../../const/definitions'
+import type { IAnnotationStore, IAnnotationStyle } from '../../const/definitions'
 import { Annotation } from '../../const/definitions'
 import { Editor, type IEditorOptions } from './editor'
 
@@ -12,12 +12,12 @@ export class EditorHighLight extends Editor {
     /**
      * 创建一个 EditorHighLight 实例。
      * @param EditorOptions 初始化编辑器的选项
-     * @param editorType 注释类型
+     * @param _editorType 注释类型
      */
     // constructor(EditorOptions: IEditorOptions, editorType: AnnotationType) {
     //     super({ ...EditorOptions, editorType })
     // }
-    constructor(EditorOptions: IEditorOptions, editorType: number) {
+    constructor(EditorOptions: IEditorOptions, _editorType: number) {
         super({ ...EditorOptions, editorType: Annotation.HIGHLIGHT })
     }
 
