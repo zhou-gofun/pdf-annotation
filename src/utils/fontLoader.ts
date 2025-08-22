@@ -1,12 +1,11 @@
 // fontLoader.ts
 
-type FontItem = {
+export interface FontItem {
     label: string
     value: string
-    external?: boolean
-    url?: ArrayBuffer
+    external: boolean
+    url: string   // ✅ 保证这里是 string
 }
-
 const loadedFonts = new Set<string>()
 
 /**

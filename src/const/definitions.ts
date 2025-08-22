@@ -173,6 +173,15 @@ export const CommentStatus = {
     Closed: 'Closed'
 }
 
+export interface CommentStatusType {
+    Accepted: string;
+    Rejected: string;
+    Cancelled: string;
+    Completed: string;
+    None: string;
+    Closed: string;
+}
+
 export interface IAnnotationContentsObj {
     text: string; // 文本内容
     image?: string; // 可选的图片属性

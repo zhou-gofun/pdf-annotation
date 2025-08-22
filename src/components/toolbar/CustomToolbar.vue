@@ -1,125 +1,106 @@
 <template>
   <div class="CustomToolbar">
-    <!-- 左侧注释工具按钮 -->
+    <!-- 左侧按钮 -->
     <ul class="buttons">
-      <template v-for="(annotation, index) in annotations" :key="index">
-        <li
-          v-if="annotation.type === Annotation.STAMP"
-          :title="t(`annotations.${annotation.name}`)"
-          :class="{ selected: annotation.type === currentAnnotation?.type }"
-        >
-          <!-- <StampTool
+      <li
+        v-for="(annotation, index) in annotations"
+        :key="index"
+        :title="t(`annotations.${annotation.name}`)"
+        :class="{ selected: annotation.type === selectedType }"
+        @click="onAnnotationClick(annotation)"
+      >
+        <template v-if="annotation.type === Annotation.STAMP">
+          <StampTool
             :userName="userName"
             :annotation="annotation"
             @add="signatureDataUrl => handleAdd(signatureDataUrl, annotation)"
-          /> -->
-        </li>
-
-        <!-- <li
-          v-else-if="annotation.type === AnnotationType.SIGNATURE"
-          :title="t(`annotations.${annotation.name}`)"
-          :class="{ selected: annotation.type === currentAnnotation?.type }"
-        >
+          />
+        </template>
+        <template v-else-if="annotation.type === Annotation.SIGNATURE">
           <SignatureTool
             :annotation="annotation"
             @add="signatureDataUrl => handleAdd(signatureDataUrl, annotation)"
           />
-        </li> -->
-
-        <li
-          v-else
-          :title="t(`annotations.${annotation.name}`)"
-          :class="{ selected: annotation.type === currentAnnotation?.type }"
-          @click="handleAnnotationClick(annotation.type === currentAnnotation?.type ? null : annotation)"
-        >
-          <div class="icon">{{ annotation.icon }}</div>
+        </template>
+        <template v-else>
+          <div class="icon">
+            <component :is="annotation.icon" />
+          </div>
           <div class="name">{{ t(`annotations.${annotation.name}`) }}</div>
-        </li>
-      </template>
+        </template>
+      </li>
 
-      <!-- 颜色选择器 -->
-      <template>
-        <li 
-          :class="{ disabled: !currentAnnotation?.styleEditable?.color }" 
-          :title="t('normal.color')"
-          @click="showColorPicker = !showColorPicker"
-        >
+      <!-- 颜色选择 -->
+      <a-popover trigger="click" placement="bottom" :arrow="false">
+        <template #content>
+          <div class="color-picker-panel">
+            <div class="color-presets">
+              <div
+                v-for="color in defaultOptions.colors"
+                :key="color"
+                class="color-preset"
+                :style="{ backgroundColor: color }"
+                :class="{ active: currentAnnotation?.style?.color === color }"
+                @click="handleColorChange(color)"
+              />
+            </div>
+            <div class="custom-color">
+              <input
+                type="color"
+                :value="currentAnnotation?.style?.color || defaultOptions.setting.COLOR"
+                @input="(e) => handleColorChange((e.target as HTMLInputElement).value)"
+              />
+              <span>{{ t('normal.customColor') }}</span>
+            </div>
+          </div>
+        </template>
+        <li :class="{ disabled: isColorDisabled }" :title="t('normal.color')">
           <div class="icon">
             <PaletteIcon :style="{ color: currentAnnotation?.style?.color }" />
           </div>
           <div class="name">{{ t('normal.color') }}</div>
-
-          <div v-if="showColorPicker" class="color-picker-popover">
-            <div 
-              v-for="color in defaultOptions.colors" 
-              :key="color"
-              class="color-option"
-              :style="{ backgroundColor: color }"
-              @click="handleColorChange(color)"
-            ></div>
-            <input
-              type="color"
-              v-model="customColor"
-              @change="handleColorChange(customColor)"
-            />
-          </div>
         </li>
-      </template>
+      </a-popover>
     </ul>
 
     <div class="splitToolbarButtonSeparator"></div>
 
     <!-- 保存 / 导出 -->
     <ul class="buttons">
-      <li
-        v-if="defaultOptions.setting.SAVE_BUTTON"
-        :title="t('normal.save')"
-        @click="onSave"
-      >
+      <li v-if="defaultOptions.setting.SAVE_BUTTON" :title="t('normal.save')" @click="onSave">
         <div class="icon"><SaveIcon /></div>
         <div class="name">{{ t('normal.save') }}</div>
       </li>
 
-      <li
-        v-if="defaultOptions.setting.EXPORT_PDF || defaultOptions.setting.EXPORT_EXCEL"
-        :title="t('normal.export')"
-      >
-        <Popover trigger="click" placement="bottom">
+      <li v-if="defaultOptions.setting.EXPORT_PDF || defaultOptions.setting.EXPORT_EXCEL" :title="t('normal.export')">
+        <a-popover trigger="click" placement="bottom" :arrow="false">
           <template #content>
-            <Space direction="vertical">
-              <Button
+            <a-space direction="vertical">
+              <a-button
                 v-if="defaultOptions.setting.EXPORT_PDF"
                 block
-                type="default"
                 @click="() => onExport('pdf')"
               >
-                <template #icon><FilePdfOutlined /></template>
-                PDF
-              </Button>
-
-              <Button
+                <FilePdfOutlined /> PDF
+              </a-button>
+              <a-button
                 v-if="defaultOptions.setting.EXPORT_EXCEL"
                 block
-                type="default"
                 @click="() => onExport('excel')"
               >
-                <template #icon><FilePdfOutlined /></template>
-                Excel
-              </Button>
-            </Space>
+                <FilePdfOutlined /> Excel
+              </a-button>
+            </a-space>
           </template>
           <div class="icon"><ExportIcon /></div>
           <div class="name">{{ t('normal.export') }}</div>
-        </Popover>
+        </a-popover>
       </li>
     </ul>
 
-    <!-- 右侧 sidebar -->
+    <!-- 右侧按钮 -->
     <ul class="buttons right">
-      <li
-        @click="handleSidebarOpen(sidebarOpen)"
-        :class="{ selected: sidebarOpen }"
-      >
+      <li :class="{ selected: sidebarOpen }" @click="handleSidebarOpen(sidebarOpen)">
         <div class="icon"><AnnoIcon /></div>
         <div class="name">{{ t('anno') }}</div>
       </li>
@@ -128,162 +109,176 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineExpose } from "vue";
+import { ref, computed, watch, defineExpose } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { message } from 'ant-design-vue'
 import {
   annotationDefinitions,
   Annotation,
   type AnnotationType,
   type IAnnotationStyle,
   type IAnnotationType,
-  PdfjsAnnotationEditorType,
-} from "../../const/definitions";
-import { AnnoIcon, ExportIcon, PaletteIcon, SaveIcon } from "../../const/icon";
-// import { SignatureTool } from "./signature";
-// import { StampTool } from "./stamp";
-import { defaultOptions } from "../../const/default_options";
-import { FilePdfOutlined } from "@ant-design/icons-vue";
-// import { message } from "ant-design-vue";
-import { Popover, Button, Space } from 'ant-design-vue'
+  PdfjsAnnotationEditorType
+} from '../../const/definitions'
+import { AnnoIcon, ExportIcon, PaletteIcon, SaveIcon } from '../../const/icon'
+import SignatureTool from './signature.vue'
+import StampTool from './stamp.vue'
+import { defaultOptions } from '../../const/default_options'
+import { FilePdfOutlined } from '@ant-design/icons-vue'
 
 interface Props {
-  defaultAnnotationName?: string; // 可选
-  defaultSidebarOpen?: boolean;
-  userName?: string;
-  onChange?: (annotation: IAnnotationType | null, dataTransfer: string | null) => void;
-  onSave?: () => void;
-  onExport?: (type: "pdf" | "excel") => void;
-  onSidebarOpen?: (open: boolean) => void;
+  defaultAnnotationName: string
+  defaultSidebarOpen: boolean
+  userName: string
+  onChange: (annotation: IAnnotationType | null, dataTransfer: string | null) => void
+  onSave: () => void
+  onExport: (type: 'pdf' | 'excel') => void
+  onSidebarOpen: (open: boolean) => void
 }
+const props = defineProps<Props>()
+const { t } = useI18n()
 
-const props = withDefaults(defineProps<Props>(), {
-  defaultAnnotationName: "",   // 👈 防止 null 报错
-  defaultSidebarOpen: false,   // 👈 默认关闭
-  userName: "anonymous",       // 👈 给个兜底用户名
-  onChange: () => {},
-  onSave: () => {},
-  onExport: () => {},
-  onSidebarOpen: () => {}
-});
-
-
-const { t } = useI18n();
-
-// 初始化 annotation
+// state
 const defaultAnnotation = computed<IAnnotationType | null>(() => {
-  if (!props.defaultAnnotationName) return null;
-  return (
-    annotationDefinitions.find(
-      (item) => item.name === props.defaultAnnotationName
-    ) || null
-  );
-});
+  if (!props.defaultAnnotationName) return null
+  return annotationDefinitions.find(item => item.name === props.defaultAnnotationName) || null
+})
 
-const showColorPicker = ref(false)
-const customColor = ref('#000000')
-
-const currentAnnotation = ref<IAnnotationType | null>(defaultAnnotation.value);
+const currentAnnotation = ref<IAnnotationType | null>(defaultAnnotation.value)
 const annotations = ref<IAnnotationType[]>(
-  annotationDefinitions.filter(
-    (item) => item.pdfjsEditorType !== PdfjsAnnotationEditorType.HIGHLIGHT
-  )
-);
-const dataTransfer = ref<string | null>(null);
-const sidebarOpen = ref<boolean>(props.defaultSidebarOpen);
+  annotationDefinitions.filter(item => item.pdfjsEditorType !== PdfjsAnnotationEditorType.HIGHLIGHT)
+)
+const dataTransfer = ref<string | null>(null)
+const sidebarOpen = ref<boolean>(props.defaultSidebarOpen)
 
-// --- 暴露给外部的方法 ---
-function activeAnnotation(annotation: IAnnotationType) {
-  handleAnnotationClick(annotation);
-}
+const selectedType = computed(() => currentAnnotation.value?.type)
+const isColorDisabled = computed(() => !currentAnnotation.value?.styleEditable?.color)
 
-function toggleSidebarBtn(open: boolean) {
-  sidebarOpen.value = open;
-}
-
-function updateStyle(annotationType: AnnotationType, style: IAnnotationStyle) {
-  annotations.value = annotations.value.map((annotation) => {
-    if ((annotation.type as unknown as AnnotationType) === annotationType) {
-      annotation.style = { ...annotation.style, ...style };
-    }
-    return annotation;
-  });
-}
-
-defineExpose({ activeAnnotation, toggleSidebarBtn, updateStyle });
-
-// --- 内部逻辑 ---
-function handleAnnotationClick(annotation: IAnnotationType | null) {
-  currentAnnotation.value = annotation;
+// methods
+function onAnnotationClick(annotation: IAnnotationType | null) {
+  if (annotation?.type === selectedType.value) {
+    currentAnnotation.value = null
+  } else {
+    currentAnnotation.value = annotation
+  }
   if (annotation?.type !== Annotation.SIGNATURE) {
-    dataTransfer.value = null;
+    dataTransfer.value = null
   }
 }
 
-// function handleAdd(signatureDataUrl: string, annotation: IAnnotationType) {
-//   message.info(t("toolbar.message.selectPosition"));
-//   dataTransfer.value = signatureDataUrl;
-//   currentAnnotation.value = annotation;
-// }
+function handleAdd(signatureDataUrl: string, annotation: IAnnotationType) {
+  message.info(t('toolbar.message.selectPosition'))
+  dataTransfer.value = signatureDataUrl
+  currentAnnotation.value = annotation
+}
 
 function handleColorChange(color: string) {
-  if (!currentAnnotation.value) return;
-  const updatedAnnotation = {
+  if (!currentAnnotation.value) return
+  const updatedAnnotation: IAnnotationType = {
     ...currentAnnotation.value,
-    style: { ...currentAnnotation.value.style, color },
-  };
-  annotations.value = annotations.value.map((annotation) =>
-    annotation.type === currentAnnotation.value?.type
-      ? updatedAnnotation
-      : annotation
-  );
-  currentAnnotation.value = updatedAnnotation;
+    style: { ...currentAnnotation.value.style, color }
+  }
+  annotations.value = annotations.value.map(a =>
+    a.type === currentAnnotation.value?.type ? updatedAnnotation : a
+  )
+  currentAnnotation.value = updatedAnnotation
 }
 
 function handleSidebarOpen(isOpen: boolean) {
-  props.onSidebarOpen(!isOpen);
-  sidebarOpen.value = !isOpen;
+  props.onSidebarOpen(!isOpen)
+  sidebarOpen.value = !isOpen
 }
 
-// 监听变化并通知外部
-watch([currentAnnotation, dataTransfer], () => {
-  props.onChange(currentAnnotation.value, dataTransfer.value);
-});
+// expose 方法 (代替 forwardRef)
+function activeAnnotation(annotation: IAnnotationType) {
+  onAnnotationClick(annotation)
+}
+function updateStyle(annotationType: AnnotationType, style: IAnnotationStyle) {
+  annotations.value = annotations.value.map(annotation => {
+    if (annotation.type.toString() === annotationType.toString()) {
+      annotation.style = { ...annotation.style, ...style }
+    }
+    return annotation
+  })
+}
+function toggleSidebarBtn(open: boolean) {
+  sidebarOpen.value = open
+}
+defineExpose({
+  activeAnnotation,
+  updateStyle,
+  toggleSidebarBtn
+})
+
+// watch => props.onChange
+watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
+  props.onChange(anno, transfer)
+})
 </script>
 
-<style scoped lang="scss">
-.CustomToolbar {
-  display: flex;
-  align-items: center;
-  .buttons {
-    display: flex;
-    list-style: none;
-    padding: 0;
-    margin: 0;
+<style lang="scss" scoped>
+@use './index.scss' as *;
 
-    li {
+.color-picker-panel {
+  width: 200px;
+  padding: 8px;
+  
+  .color-presets {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-bottom: 8px;
+    
+    .color-preset {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
       cursor: pointer;
-      padding: 6px 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-
-      &.selected {
-        background: #e6f4ff;
+      border: 2px solid transparent;
+      transition: all 0.2s;
+      
+      &:hover {
+        transform: scale(1.1);
       }
-      &.disabled {
-        pointer-events: none;
-        opacity: 0.5;
+      
+      &.active {
+        border-color: #1890ff;
+        box-shadow: 0 0 4px rgba(24, 144, 255, 0.5);
       }
     }
   }
-  .splitToolbarButtonSeparator {
-    width: 1px;
-    height: 24px;
-    background: #ccc;
-    margin: 0 10px;
-  }
-  .buttons.right {
-    margin-left: auto;
+  
+  .custom-color {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
+    
+    input[type="color"] {
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: none;
+      
+      &::-webkit-color-swatch-wrapper {
+        padding: 0;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+      }
+      
+      &::-webkit-color-swatch {
+        border: none;
+        border-radius: 3px;
+      }
+    }
+    
+    span {
+      font-size: 12px;
+      color: #666;
+    }
   }
 }
 </style>
