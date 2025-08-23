@@ -77,15 +77,17 @@ const close = () => {
 
 // 点击注释按钮
 const handleAnnotationClick = (annotation: IAnnotationType | null) => {
-  show.value = false
+  // 先调用父组件的onChange回调处理annotation
   props.onChange(annotation, currentRange.value)
   
-  // 清除文本选择
+  // 清除文本选择 - 这会触发selectionchange事件，进而通过webSelection系统隐藏popbar
   const selection = window.getSelection()
   if (selection) {
     selection.removeAllRanges()
   }
   
+  // 本地状态清理
+  show.value = false
   currentRange.value = null
 }
 
