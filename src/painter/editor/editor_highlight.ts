@@ -34,8 +34,19 @@ export class EditorHighLight extends Editor {
         const fixBounding = fixElement.getBoundingClientRect()
 
         elements.forEach(spanEl => {
+            // 获取更精确的文本边界 - 减少宽度
             const bounding = spanEl.getBoundingClientRect()
-            const { x, y, width, height } = this.calculateRelativePosition(bounding, fixBounding)
+            
+            // 计算更精确的宽度：减少左右padding，让高亮区域更贴合文本
+            const adjustedBounding = {
+                x: bounding.x,
+                y: bounding.y,
+                width: bounding.width,
+                height: bounding.height
+            }
+            console.log('adjustedBounding：', adjustedBounding)
+            
+            const { x, y, width, height } = this.calculateRelativePosition(adjustedBounding, fixBounding)
             const shape = this.createShape(x, y, width, height)
             this.currentShapeGroup?.konvaGroup.add(shape)
         })
@@ -60,16 +71,16 @@ export class EditorHighLight extends Editor {
 
     /**
      * 计算元素的相对位置和尺寸，适配 Canvas 坐标系。
-     * @param elementBounding 元素的边界矩形
+     * @param elementBounding 元素的边界矩形或自定义边界对象
      * @param fixBounding 基准元素的边界矩形
      * @returns 相对位置和尺寸的对象 { x, y, width, height }
      */
-    private calculateRelativePosition(elementBounding: DOMRect, fixBounding: DOMRect) {
+    private calculateRelativePosition(elementBounding: DOMRect | { x: number, y: number, width: number, height: number }, fixBounding: DOMRect) {
         const scale = this.konvaStage.scale()
         const x = (elementBounding.x - fixBounding.x) / scale.x
-        const y = (elementBounding.y - fixBounding.y) / scale.y
-        const width = elementBounding.width / scale.x
-        const height = elementBounding.height / scale.y
+        const y = (elementBounding.y - fixBounding.y + elementBounding.height/7) / scale.y
+        const width = (elementBounding.width - 6) / scale.x
+        const height = (elementBounding.height / scale.y) * (6 / 9)
         return { x, y, width, height }
     }
 
@@ -124,13 +135,13 @@ export class EditorHighLight extends Editor {
     private createUnderlineShape(x: number, y: number, width: number, height: number): Konva.Rect {
         return new Konva.Rect({
             x,
-            y: height + y - 2,
+            y: height + y,
             width,
             stroke: this.currentAnnotation?.style?.color,
             opacity: 1,
-            strokeWidth: 1,
+            strokeWidth: 0.5,
             hitStrokeWidth: 10,
-            height: 1
+            height: 0.5
         })
     }
 
@@ -149,9 +160,9 @@ export class EditorHighLight extends Editor {
             width,
             stroke: this.currentAnnotation?.style?.color,
             opacity: 1,
-            strokeWidth: 1,
+            strokeWidth: 0.5,
             hitStrokeWidth: 10,
-            height: 1
+            height: 0.5
         })
     }
 

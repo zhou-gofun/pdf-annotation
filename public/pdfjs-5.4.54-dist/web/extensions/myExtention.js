@@ -9391,8 +9391,12 @@ About how to use the Composition API mode, see https://vue-i18n.intlify.dev/guid
     // 禁用全局注入，减少体积
     silentFallbackWarn: !0,
     // 静默回退警告
-    silentTranslationWarn: !0
+    silentTranslationWarn: !0,
     // 静默翻译警告
+    warnHtmlMessage: !1,
+    // 关闭 HTML 消息警告
+    escapeParameter: !1
+    // 允许特殊字符在参数中
   }), jF = (e) => {
     let r = e.toLowerCase();
     r.length > 2 && (r = LF[r] || "en"), Dy.global.locale.value = r;
@@ -62923,8 +62927,15 @@ summary tabindex target title type usemap value width wmode wrap`, BY = `onCopy 
       this.currentShapeGroup = this.createShapeGroup(), this.getBgLayer().add(this.currentShapeGroup.konvaGroup);
       const n = t.getBoundingClientRect();
       r.forEach((i) => {
-        const o = i.getBoundingClientRect(), { x: a, y: s, width: c, height: l } = this.calculateRelativePosition(o, n), u = this.createShape(a, s, c, l);
-        this.currentShapeGroup?.konvaGroup.add(u);
+        const o = i.getBoundingClientRect(), a = {
+          x: o.x,
+          y: o.y,
+          width: o.width,
+          height: o.height
+        };
+        console.log("adjustedBounding：", a);
+        const { x: s, y: c, width: l, height: u } = this.calculateRelativePosition(a, n), f = this.createShape(s, c, l, u);
+        this.currentShapeGroup?.konvaGroup.add(f);
       }), this.setShapeGroupDone({
         id: this.currentShapeGroup.id,
         contentsObj: {
@@ -62943,12 +62954,12 @@ summary tabindex target title type usemap value width wmode wrap`, BY = `onCopy 
     }
     /**
      * 计算元素的相对位置和尺寸，适配 Canvas 坐标系。
-     * @param elementBounding 元素的边界矩形
+     * @param elementBounding 元素的边界矩形或自定义边界对象
      * @param fixBounding 基准元素的边界矩形
      * @returns 相对位置和尺寸的对象 { x, y, width, height }
      */
     calculateRelativePosition(r, t) {
-      const n = this.konvaStage.scale(), i = (r.x - t.x) / n.x, o = (r.y - t.y) / n.y, a = r.width / n.x, s = r.height / n.y;
+      const n = this.konvaStage.scale(), i = (r.x - t.x) / n.x, o = (r.y - t.y + r.height / 7) / n.y, a = r.width / n.x, s = r.height / n.y * (3 / 5);
       return { x: i, y: o, width: a, height: s };
     }
     /**
@@ -63000,13 +63011,13 @@ summary tabindex target title type usemap value width wmode wrap`, BY = `onCopy 
     createUnderlineShape(r, t, n, i) {
       return new ot.Rect({
         x: r,
-        y: i + t - 2,
+        y: i + t,
         width: n,
         stroke: this.currentAnnotation?.style?.color,
         opacity: 1,
-        strokeWidth: 1,
+        strokeWidth: 0.5,
         hitStrokeWidth: 10,
-        height: 1
+        height: 0.5
       });
     }
     /**
@@ -63024,9 +63035,9 @@ summary tabindex target title type usemap value width wmode wrap`, BY = `onCopy 
         width: n,
         stroke: this.currentAnnotation?.style?.color,
         opacity: 1,
-        strokeWidth: 1,
+        strokeWidth: 0.5,
         hitStrokeWidth: 10,
-        height: 1
+        height: 0.5
       });
     }
     /**
@@ -65619,7 +65630,7 @@ summary tabindex target title type usemap value width wmode wrap`, BY = `onCopy 
       }), this.webSelection = new tce({
         // 初始化 WebSelection 实例
         onSelect: (d) => {
-          d && this.onWebSelectionSelected(d);
+          this.onWebSelectionSelected(d);
         },
         onHighlight: (d) => {
           Object.keys(d).forEach((h) => {
@@ -90855,9 +90866,9 @@ use chrome, FireFox or Internet Explorer 11`);
       }, c = () => {
         i.value = !1, o.value = null;
       }, l = (u) => {
-        i.value = !1, t.onChange(u, o.value);
+        t.onChange(u, o.value);
         const f = window.getSelection();
-        f && f.removeAllRanges(), o.value = null;
+        f && f.removeAllRanges(), i.value = !1, o.value = null;
       };
       return r({
         open: s,
@@ -90884,7 +90895,7 @@ use chrome, FireFox or Internet Explorer 11`);
     for (const [n, i] of r)
       t[n] = i;
     return t;
-  }, kue = /* @__PURE__ */ xu(Pue, [["__scopeId", "data-v-605edba8"]]), um = /* @__PURE__ */ new Set();
+  }, kue = /* @__PURE__ */ xu(Pue, [["__scopeId", "data-v-98f7c639"]]), um = /* @__PURE__ */ new Set();
   function Rue(e) {
     if (!e.external || !e.url || um.has(e.value)) return;
     const r = document.createElement("style");

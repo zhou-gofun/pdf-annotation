@@ -26,7 +26,9 @@ const i18n = createI18n({
   messages,
   globalInjection: false, // 禁用全局注入，减少体积
   silentFallbackWarn: true, // 静默回退警告
-  silentTranslationWarn: true // 静默翻译警告
+  silentTranslationWarn: true, // 静默翻译警告
+  warnHtmlMessage: false, // 关闭 HTML 消息警告
+  escapeParameter: false  // 允许特殊字符在参数中
 })
 
 // 初始化 i18n 实例
