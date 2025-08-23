@@ -227,8 +227,7 @@ class PdfjsAnnotationExtension {
   private renderToolbar() {
     const el = document.createElement('div')
     this.$PDFJS_toolbar_container.insertAdjacentElement('afterend', el)
-    createConfiguredApp(CustomToolbar, {
-      ref: this.customToolbarRef,
+    const app = createConfiguredApp(CustomToolbar, {
       defaultAnnotationName: this.getOption(HASH_PARAMS_DEFAULT_EDITOR_ACTIVE),
       defaultSidebarOpen: this.getOption(HASH_PARAMS_DEFAULT_SIDEBAR_OPEN) === 'true',
       userName: this.getOption(HASH_PARAMS_USERNAME),
@@ -247,25 +246,30 @@ class PdfjsAnnotationExtension {
         this.toggleComment(isOpen)
         this.connectorLine?.clearConnection()
       },
-    }).mount(el)
+    })
+    const instance = app.mount(el)
+    this.customToolbarRef.value = instance
   }
 
   private renderPopBar() {
     const el = document.createElement('div')
-    this.$PDFJS_viewerContainer.insertAdjacentElement('afterend', el)
-    createConfiguredApp(CustomPopbar, {
-      ref: this.customPopbarRef,
+    // 恢复到原始挂载方式：挂载到body，而不是viewerContainer内部
+    // 这样floating-ui就能正常使用viewport坐标系
+    document.body.appendChild(el)
+    const app = createConfiguredApp(CustomPopbar, {
       onChange: (currentAnnotation: IAnnotationType, range: Range) => {
         this.painter.highlightRange(range, currentAnnotation)
       },
-    }).mount(el)
+    })
+    const instance = app.mount(el)
+    // 手动设置 ref
+    this.customPopbarRef.value = instance
   }
 
   private renderAnnotationMenu() {
     const el = document.createElement('div')
     this.$PDFJS_outerContainer.insertAdjacentElement('afterend', el)
-    createConfiguredApp(CustomAnnotationMenu, {
-      ref: this.customerAnnotationMenuRef,
+    const app = createConfiguredApp(CustomAnnotationMenu, {
       onOpenComment: (annotation: any) => {
         this.toggleComment(true)
         this.customToolbarRef.value?.toggleSidebarBtn(true)
@@ -280,14 +284,15 @@ class PdfjsAnnotationExtension {
       onDelete: (annotation: { id: string }) => {
         this.painter.delete(annotation.id, true)
       },
-    }).mount(el)
+    })
+    const instance = app.mount(el)
+    this.customerAnnotationMenuRef.value = instance
   }
 
   private renderComment() {
     const el = document.createElement('div')
     this.$PDFJS_mainContainer.insertAdjacentElement('afterend', el)
-    createConfiguredApp(CustomComment, {
-      ref: this.customCommentRef,
+    const app = createConfiguredApp(CustomComment, {
       userName: this.getOption(HASH_PARAMS_USERNAME),
       onSelected: async (annotation: IAnnotationStore) => {
         await this.painter.highlight(annotation)
@@ -305,7 +310,9 @@ class PdfjsAnnotationExtension {
       onScroll: () => {
         this.connectorLine?.clearConnection()
       },
-    }).mount(el)
+    })
+    const instance = app.mount(el)
+    this.customCommentRef.value = instance
   }
 
     /**
@@ -361,7 +368,18 @@ class PdfjsAnnotationExtension {
           'pagerendered',
           async ({ source, cssTransform, pageNumber }: { source: PDFPageView; cssTransform: boolean; pageNumber: number }) => {
               setLoadEnd()
-              this.painter.initCanvas({ pageView: source, cssTransform, pageNumber })
+              
+              // 进一步增加延迟时间，给PDF.js更多时间完成所有内部操作
+              // 包括annotation layer的渲染和link injection
+              setTimeout(() => {
+                  // 检查页面是否仍然存在且完全渲染完成
+                  if (source && source.renderingState === 3 && source.div && source.viewport) {
+                      // 再次检查页面是否还在DOM中
+                      if (document.contains(source.div)) {
+                          this.painter.initCanvas({ pageView: source, cssTransform, pageNumber })
+                      }
+                  }
+              }, 500) // 增加到 500ms 延迟，确保 PDF.js 完全完成内部操作
           }
       )
 
