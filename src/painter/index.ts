@@ -12,13 +12,13 @@ import { Editor } from './editor/editor.ts'
 import { EditorCircle } from './editor/editor_circle.ts'
 import { EditorFreeHand } from './editor/editor_free_hand.ts'
 import { EditorFreeHighlight } from './editor/editor_free_highlight.ts'
-import { EditorFreeText } from './editor/editor_free_text.tsx'
+import { EditorFreeText } from './editor/editor_free_text.ts'
 import { EditorHighLight } from './editor/editor_highlight.ts'
 import { EditorRectangle } from './editor/editor_rectangle.ts'
 import { EditorSignature } from './editor/editor_signature.ts'
-import { EditorStamp } from './editor/editor_stamp.tsx'
+import { EditorStamp } from './editor/editor_stamp.ts'
 import { EditorNote } from './editor/editor_note.ts'
-import { Selector } from './editor/selector.tsx'
+import { Selector } from './editor/selector.ts'
 import { Store } from './store.ts'
 import { WebSelection } from './webSelection.ts'
 import { Transform } from './transform/transform.ts'
@@ -283,10 +283,50 @@ export class Painter {
      * @param params - 包含当前 PDF 页面视图、是否需要 CSS 转换和页码的对象
      */
     public initCanvas({ pageView, cssTransform, pageNumber }: { pageView: PDFPageView; cssTransform: boolean; pageNumber: number }): void {
-        if (cssTransform) {
-            this.scaleCanvas(pageView, pageNumber)
-        } else {
-            this.insertCanvas(pageView, pageNumber)
+        try {
+            // 检查页面是否已经准备好
+            if (!pageView || !pageView.div || !pageView.viewport) {
+                console.warn(`Page ${pageNumber} is not ready for canvas initialization`)
+                return
+            }
+            
+            // 检查页面渲染状态 - 只在完全渲染完成后初始化
+            if (pageView.renderingState !== 3) { // 3 = FINISHED state
+                console.warn(`Page ${pageNumber} is not fully rendered (state: ${pageView.renderingState})`)
+                return // 不再重试，避免无限循环
+            }
+            
+            // 检查 DOM 元素是否仍然在文档中
+            if (!document.contains(pageView.div)) {
+                console.warn(`Page ${pageNumber} div is no longer in document`)
+                return
+            }
+            
+            // 检查是否已经存在画布，避免重复初始化
+            const existingCanvas = this.konvaCanvasStore.get(pageNumber)
+            if (existingCanvas && existingCanvas.konvaStage && existingCanvas.wrapper && isElementInDOM(existingCanvas.wrapper)) {
+                // 如果只是缩放变化，更新现有画布
+                if (cssTransform) {
+                    this.scaleCanvas(pageView, pageNumber)
+                }
+                return
+            }
+            
+            // 额外的安全延迟，确保不干扰PDF.js的后续操作
+            setTimeout(() => {
+                try {
+                    if (cssTransform) {
+                        this.scaleCanvas(pageView, pageNumber)
+                    } else {
+                        this.insertCanvas(pageView, pageNumber)
+                    }
+                } catch (error) {
+                    console.error(`Error in delayed canvas initialization for page ${pageNumber}:`, error)
+                }
+            }, 100) // 再额外延迟100ms，总延迟变成600ms
+            
+        } catch (error) {
+            console.error(`Error initializing canvas for page ${pageNumber}:`, error)
         }
     }
 
@@ -757,7 +797,16 @@ export class Painter {
         const wrapper = document.createElement('div') // 创建 div 元素作为绘图容器
         wrapper.id = `${PAINTER_WRAPPER_PREFIX}_page_${pageNumber}` // 设置 id
         wrapper.classList.add(PAINTER_WRAPPER_PREFIX) // 添加类名
-        pageView.div.appendChild(wrapper)
+        
+        // 安全地添加到 DOM
+        try {
+            if (pageView.div && pageView.div.parentNode) {
+                pageView.div.appendChild(wrapper)
+            }
+        } catch (error) {
+            console.error('Error appending painter wrapper:', error)
+        }
+        
         return wrapper
     }
 

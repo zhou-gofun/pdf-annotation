@@ -16,15 +16,17 @@ const show = ref(false)
 const currentRange = ref<Range | null>(null)
 
 // 获取高亮类型的注释
-const annotations = computed<IAnnotationType[]>(() =>
-  annotationDefinitions.filter(item => item.pdfjsEditorType === PdfjsAnnotationEditorType.HIGHLIGHT)
-)
+const annotations = computed<IAnnotationType[]>(() => {
+  const highlightAnnotations = annotationDefinitions.filter(item => item.pdfjsEditorType === PdfjsAnnotationEditorType.HIGHLIGHT)
+  return highlightAnnotations
+})
 
 
-// 打开 Popbar
+// 打开 Popbar - 完全按照原始React代码逻辑
 const open = async (range: Range | null) => {
   currentRange.value = range
-
+  
+  // 如果 range 为空或 startContainer 和 endContainer 都不是文本节点，隐藏菜单
   if (!range || (range.endContainer.nodeType !== 3 && range.startContainer.nodeType !== 3)) {
     show.value = false
     return
@@ -32,24 +34,37 @@ const open = async (range: Range | null) => {
 
   show.value = true
 
-  const rect = range.endContainer.nodeType === 3
+  // 根据 endContainer 或 startContainer 获取边界矩形 - 完全按照原始逻辑
+  const { bottom, height, left, right, top, width, x, y } = range.endContainer.nodeType === 3
     ? range.endContainer.parentElement!.getBoundingClientRect()
-    : range.startContainer.parentElement!.getBoundingClientRect()
+    : (range.startContainer as any).parentElement!.getBoundingClientRect()
 
+  // 创建虚拟元素用于计算位置 - 完全按照原始逻辑
   const virtualEl = {
     getBoundingClientRect() {
-      return rect
+      return {
+        width,
+        height,
+        x,
+        y,
+        left,
+        right,
+        top,
+        bottom
+      }
     }
   }
 
+  // 计算位置并调整菜单位置 - 完全按照原始逻辑
   if (containerRef.value) {
-    const { x, y } = await computePosition(virtualEl, containerRef.value, {
+    const { x: posX, y: posY } = await computePosition(virtualEl, containerRef.value, {
       placement: 'bottom',
       middleware: [flip()]
     })
+    
     Object.assign(containerRef.value.style, {
-      left: `${x}px`,
-      top: `${y}px`
+      left: `${posX}px`,
+      top: `${posY}px`
     })
   }
 }
@@ -64,6 +79,14 @@ const close = () => {
 const handleAnnotationClick = (annotation: IAnnotationType | null) => {
   show.value = false
   props.onChange(annotation, currentRange.value)
+  
+  // 清除文本选择
+  const selection = window.getSelection()
+  if (selection) {
+    selection.removeAllRanges()
+  }
+  
+  currentRange.value = null
 }
 
 // 暴露方法给父组件
@@ -80,7 +103,9 @@ defineExpose({
   >
     <ul class="buttons">
       <li v-for="(annotation, index) in annotations" :key="index" @click="handleAnnotationClick(annotation)">
-        <div class="icon">{{ annotation.icon }}</div>
+        <div class="icon">
+          <component :is="annotation.icon" />
+        </div>
       </li>
     </ul>
   </div>
@@ -89,22 +114,23 @@ defineExpose({
 <style scoped lang="scss">
 /* 可保留原来的 index.scss 样式 */
 .CustomPopbar {
-    position: absolute;
+    position: fixed; /* 改为 fixed 定位，因为现在挂载在 body 上 */
     top: 0;
     left: 0;
-    z-index: 999;
+    z-index: 999999 !important; /* 提高 z-index 确保显示在最上层 */
     display: none;
     width: max-content;
-    background-color: var(--doorhanger-bg-color);
+    background-color: var(--doorhanger-bg-color, #fff); /* 添加后备颜色 */
     box-shadow:
-        0 1px 5px var(--doorhanger-border-color),
-        0 0 0 1px var(--doorhanger-border-color);
-    border: var(--toolbar-border-color);
+        0 1px 5px var(--doorhanger-border-color, rgba(0,0,0,0.2)),
+        0 0 0 1px var(--doorhanger-border-color, rgba(0,0,0,0.2));
+    border: var(--toolbar-border-color, #ccc);
     border-radius: 6px;
     font: message-box;
     padding: 4px; // 增加基础内边距避免按钮贴边
+    pointer-events: auto; /* 确保可以点击 */
     &.show {
-        display: block;
+        display: block !important; /* 确保显示 */
     }
 
     .buttons {

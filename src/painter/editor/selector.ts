@@ -1,12 +1,12 @@
 import Konva from 'konva'
 
-import type { IAnnotationStore } from '../../const/definitions'
-import { SELECTOR_HOVER_STYLE, SHAPE_GROUP_NAME } from '../const'
+import type { IAnnotationStore } from '../../const/definitions.ts'
+import { SELECTOR_HOVER_STYLE, SHAPE_GROUP_NAME } from '../const.ts'
 import type { KonvaCanvas } from '../index.ts'
 import { Modal } from 'ant-design-vue'
 import i18n from 'i18next'
 import type { IRect } from 'konva/lib/types'
-import { defaultOptions } from '../../const/default_options'
+import { defaultOptions } from '../../const/default_options.ts'
 /**
  * 定义选择器的选项接口
  */

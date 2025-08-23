@@ -94,7 +94,7 @@
             "none": "无",
             "closed": "关闭"
         },
-        "statusText": "将状态设置为 “{{value}}”"
+        "statusText": "将状态设置为 {{value}}"
     },
     "pdf": {
         "generationSuccess": "文件已生成！"
