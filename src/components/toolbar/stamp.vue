@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <!-- <div> -->
     <a-popover
       v-model:open="isPopoverOpen"
       trigger="click"
@@ -75,7 +75,7 @@
       <div class="icon">
         <component :is="annotation.icon" />
       </div>
-      <div class="name">{{ t(`annotations.${annotation.name}`) }}</div>
+      <!-- <div class="name">{{ t(`annotations.${annotation.name}`) }}</div> -->
     </a-popover>
 
     <a-modal
@@ -279,7 +279,7 @@
         <div class="StampTool-Toolbar"></div>
       </div>
     </a-modal>
-  </div>
+  <!-- </div> -->
 </template>
 
 <script setup lang="ts">
@@ -299,6 +299,7 @@ interface Props {
   annotation: IAnnotationType
   userName: string
 }
+// const { annotation } = defineProps<Props>()
 
 interface Emits {
   (e: 'add', signatureDataUrl: string): void
@@ -714,5 +715,21 @@ onUnmounted(() => {
       color: #666;
     }
   }
+}
+
+.icon {
+    font-size: 18px;
+    padding: 5px 10px 3px 10px;
+    border-bottom: 1px solid transparent;
+    opacity: 0.9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    svg {
+        width: 1em;
+        height: 1em;
+        fill: currentColor;
+    }
 }
 </style>

@@ -26,7 +26,7 @@
           <div class="icon">
             <component :is="annotation.icon" />
           </div>
-          <div class="name">{{ t(`annotations.${annotation.name}`) }}</div>
+          <!-- <div class="name">{{ t(`annotations.${annotation.name}`) }}</div> -->
         </template>
       </li>
 
@@ -58,7 +58,7 @@
           <div class="icon">
             <PaletteIcon :style="{ color: currentAnnotation?.style?.color }" />
           </div>
-          <div class="name">{{ t('normal.color') }}</div>
+          <!-- <div class="name">{{ t('normal.color') }}</div> -->
         </li>
       </a-popover>
     </ul>
@@ -69,7 +69,7 @@
     <ul class="buttons">
       <li v-if="defaultOptions.setting.SAVE_BUTTON" :title="t('normal.save')" @click="onSave">
         <div class="icon"><SaveIcon /></div>
-        <div class="name">{{ t('normal.save') }}</div>
+        <!-- <div class="name">{{ t('normal.save') }}</div> -->
       </li>
 
       <li v-if="defaultOptions.setting.EXPORT_PDF || defaultOptions.setting.EXPORT_EXCEL" :title="t('normal.export')">
@@ -93,16 +93,8 @@
             </a-space>
           </template>
           <div class="icon"><ExportIcon /></div>
-          <div class="name">{{ t('normal.export') }}</div>
+          <!-- <div class="name">{{ t('normal.export') }}</div> -->
         </a-popover>
-      </li>
-    </ul>
-
-    <!-- 右侧按钮 -->
-    <ul class="buttons right">
-      <li :class="{ selected: sidebarOpen }" @click="handleSidebarOpen(sidebarOpen)">
-        <div class="icon"><AnnoIcon /></div>
-        <div class="name">{{ t('anno') }}</div>
       </li>
     </ul>
   </div>
@@ -120,7 +112,7 @@ import {
   type IAnnotationType,
   PdfjsAnnotationEditorType
 } from '../../const/definitions'
-import { AnnoIcon, ExportIcon, PaletteIcon, SaveIcon } from '../../const/icon'
+import { ExportIcon, PaletteIcon, SaveIcon } from '../../const/icon'
 import SignatureTool from './signature.vue'
 import StampTool from './stamp.vue'
 import { defaultOptions } from '../../const/default_options'
@@ -128,15 +120,41 @@ import { FilePdfOutlined } from '@ant-design/icons-vue'
 
 interface Props {
   defaultAnnotationName: string
-  defaultSidebarOpen: boolean
   userName: string
+  selectedCategory?: string // New prop for selected category
   onChange: (annotation: IAnnotationType | null, dataTransfer: string | null) => void
   onSave: () => void
   onExport: (type: 'pdf' | 'excel') => void
-  onSidebarOpen: (open: boolean) => void
 }
 const props = defineProps<Props>()
 const { t } = useI18n()
+
+// Category definitions
+const categoryToAnnotations = {
+  'annotate': [
+    Annotation.HIGHLIGHT,
+    Annotation.UNDERLINE,
+    Annotation.STRIKEOUT,
+    Annotation.NOTE,
+    Annotation.RECTANGLE,
+    Annotation.FREEHAND,
+    Annotation.FREE_HIGHLIGHT
+  ],
+  'shapes': [
+    Annotation.FREEHAND,
+    Annotation.FREE_HIGHLIGHT,
+    Annotation.RECTANGLE,
+    Annotation.CIRCLE,
+    Annotation.ARROW
+  ],
+  'insert': [
+    Annotation.SIGNATURE,
+    Annotation.STAMP
+  ],
+  'measure': [
+    // Add measure annotations when implemented
+  ]
+}
 
 // state
 const defaultAnnotation = computed<IAnnotationType | null>(() => {
@@ -145,14 +163,33 @@ const defaultAnnotation = computed<IAnnotationType | null>(() => {
 })
 
 const currentAnnotation = ref<IAnnotationType | null>(defaultAnnotation.value)
-const annotations = ref<IAnnotationType[]>(
-  annotationDefinitions.filter(item => item.pdfjsEditorType !== PdfjsAnnotationEditorType.HIGHLIGHT)
-)
+
+// Filter annotations based on selected category
+const filteredAnnotations = computed<IAnnotationType[]>(() => {
+  const allAnnotations = annotationDefinitions.filter(item => item.pdfjsEditorType !== PdfjsAnnotationEditorType.HIGHLIGHT)
+  
+  if (!props.selectedCategory) {
+    return allAnnotations
+  }
+  
+  const categoryTypes = categoryToAnnotations[props.selectedCategory as keyof typeof categoryToAnnotations] || []
+  return allAnnotations.filter(annotation => categoryTypes.includes(annotation.type as never))
+})
+
+const annotations = ref<IAnnotationType[]>(filteredAnnotations.value)
 const dataTransfer = ref<string | null>(null)
-const sidebarOpen = ref<boolean>(props.defaultSidebarOpen)
 
 const selectedType = computed(() => currentAnnotation.value?.type)
 const isColorDisabled = computed(() => !currentAnnotation.value?.styleEditable?.color)
+
+// Watch for category changes
+watch(() => props.selectedCategory, () => {
+  annotations.value = filteredAnnotations.value
+  // Reset current annotation if it's not in the new category
+  if (currentAnnotation.value && !filteredAnnotations.value.some(a => a.type === currentAnnotation.value?.type)) {
+    currentAnnotation.value = null
+  }
+})
 
 // methods
 function onAnnotationClick(annotation: IAnnotationType | null) {
@@ -184,11 +221,6 @@ function handleColorChange(color: string) {
   currentAnnotation.value = updatedAnnotation
 }
 
-function handleSidebarOpen(isOpen: boolean) {
-  props.onSidebarOpen(!isOpen)
-  sidebarOpen.value = !isOpen
-}
-
 // expose 方法 (代替 forwardRef)
 function activeAnnotation(annotation: IAnnotationType) {
   onAnnotationClick(annotation)
@@ -201,13 +233,9 @@ function updateStyle(annotationType: AnnotationType, style: IAnnotationStyle) {
     return annotation
   })
 }
-function toggleSidebarBtn(open: boolean) {
-  sidebarOpen.value = open
-}
 defineExpose({
   activeAnnotation,
-  updateStyle,
-  toggleSidebarBtn
+  updateStyle
 })
 
 // watch => props.onChange

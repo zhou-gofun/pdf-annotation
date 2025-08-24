@@ -74,6 +74,7 @@ class PdfjsAnnotationExtension {
   customPopbarRef: Ref<any>
   customerAnnotationMenuRef: Ref<any>
   customCommentRef: Ref<any>
+  selectedCategoryRef: Ref<string>
 
   painter: Painter
   appOptions: AppOptions
@@ -98,6 +99,7 @@ class PdfjsAnnotationExtension {
     this.customPopbarRef = ref()
     this.customerAnnotationMenuRef = ref()
     this.customCommentRef = ref()
+    this.selectedCategoryRef = ref('')
 
     // i18n
     initializeI18n(this.PDFJS_PDFViewerApplication.l10n.getLanguage())
@@ -168,6 +170,7 @@ class PdfjsAnnotationExtension {
   private init() {
     this.addCustomStyle()
     this.bindPdfjsEvents()
+    this.setupPrimaryMenuButtons()
     this.renderToolbar()
     this.renderPopBar()
     this.renderAnnotationMenu()
@@ -223,14 +226,102 @@ class PdfjsAnnotationExtension {
     return !document.body.classList.contains('PdfjsAnnotationExtension_Comment_hidden')
   }
 
+  private setupPrimaryMenuButtons(): void {
+    // 等待DOM加载后设置事件监听器
+    setTimeout(() => {
+      // 设置一级菜单按钮事件
+      const primaryMenuButtons = document.querySelectorAll('.primaryMenuButton')
+      primaryMenuButtons.forEach(button => {
+        button.addEventListener('click', (event) => {
+          const target = event.currentTarget as HTMLElement
+          const category = target.getAttribute('data-category')
+          
+          // 移除所有按钮的active状态
+          primaryMenuButtons.forEach(btn => btn.classList.remove('active'))
+          
+          if (category) {
+            // 如果点击的是已选中的分类，则取消选择
+            if (this.selectedCategoryRef.value === category) {
+              this.selectedCategoryRef.value = ''
+            } else {
+              // 选择新分类
+              this.selectedCategoryRef.value = category
+              target.classList.add('active')
+            }
+            
+            // 重新渲染工具栏以应用过滤
+            this.updateToolbarCategory()
+          }
+        })
+      })
+
+      // 设置批注按钮事件
+      const annotationToggleButton = document.getElementById('annotationToggleButton')
+      if (annotationToggleButton) {
+        // 初始化状态
+        const isInitiallyOpen = this.getOption(HASH_PARAMS_DEFAULT_SIDEBAR_OPEN) === 'true'
+        if (isInitiallyOpen) {
+          annotationToggleButton.classList.add('toggled')
+        }
+
+        annotationToggleButton.addEventListener('click', () => {
+          const isCurrentlyOpen = this.isCommentOpen()
+          this.toggleComment(!isCurrentlyOpen)
+          this.connectorLine?.clearConnection()
+          
+          // 更新按钮状态
+          if (!isCurrentlyOpen) {
+            annotationToggleButton.classList.add('toggled')
+          } else {
+            annotationToggleButton.classList.remove('toggled')
+          }
+        })
+      }
+    }, 100)
+  }
+
+  private updateToolbarCategory(): void {
+    // 因为Vue组件使用的是响应式ref，我们需要重新创建组件实例
+    if (this.customToolbarRef.value) {
+      // 获取当前工具栏容器
+      const currentEl = this.customToolbarRef.value.$el
+      if (currentEl && currentEl.parentNode) {
+        // 移除当前实例
+        currentEl.parentNode.removeChild(currentEl)
+      }
+      
+      // 重新创建工具栏
+      const el = document.createElement('div')
+      this.$PDFJS_toolbar_container.insertAdjacentElement('afterend', el)
+      const app = createConfiguredApp(CustomToolbar, {
+        defaultAnnotationName: this.getOption(HASH_PARAMS_DEFAULT_EDITOR_ACTIVE),
+        userName: this.getOption(HASH_PARAMS_USERNAME),
+        selectedCategory: this.selectedCategoryRef.value,
+        onChange: (currentAnnotation: IAnnotationType | null, dataTransfer: string | null) => {
+          this.painter.activate(currentAnnotation, dataTransfer)
+        },
+        onSave: () => this.saveData(),
+        onExport: async (type: string) => {
+          if (type === 'excel') {
+            this.exportExcel()
+          } else if (type === 'pdf') {
+            await this.exportPdf()
+          }
+        }
+      })
+      const instance = app.mount(el)
+      this.customToolbarRef.value = instance
+    }
+  }
+
   // Vue3 组件挂载
   private renderToolbar() {
     const el = document.createElement('div')
     this.$PDFJS_toolbar_container.insertAdjacentElement('afterend', el)
     const app = createConfiguredApp(CustomToolbar, {
       defaultAnnotationName: this.getOption(HASH_PARAMS_DEFAULT_EDITOR_ACTIVE),
-      defaultSidebarOpen: this.getOption(HASH_PARAMS_DEFAULT_SIDEBAR_OPEN) === 'true',
       userName: this.getOption(HASH_PARAMS_USERNAME),
+      selectedCategory: this.selectedCategoryRef.value,
       onChange: (currentAnnotation: IAnnotationType | null, dataTransfer: string | null) => {
         this.painter.activate(currentAnnotation, dataTransfer)
       },
@@ -241,11 +332,7 @@ class PdfjsAnnotationExtension {
         } else if (type === 'pdf') {
           await this.exportPdf()
         }
-      },
-      onSidebarOpen: (isOpen: boolean) => {
-        this.toggleComment(isOpen)
-        this.connectorLine?.clearConnection()
-      },
+      }
     })
     const instance = app.mount(el)
     this.customToolbarRef.value = instance
@@ -272,7 +359,11 @@ class PdfjsAnnotationExtension {
     const app = createConfiguredApp(CustomAnnotationMenu, {
       onOpenComment: (annotation: any) => {
         this.toggleComment(true)
-        this.customToolbarRef.value?.toggleSidebarBtn(true)
+        // 更新批注按钮状态
+        const annotationToggleButton = document.getElementById('annotationToggleButton')
+        if (annotationToggleButton) {
+          annotationToggleButton.classList.add('toggled')
+        }
         setTimeout(() => {
           this.customCommentRef.value?.selectedAnnotation(annotation, true)
         }, 100)

@@ -24,7 +24,7 @@
       <div class="icon">
         <component :is="annotation.icon" />
       </div>
-      <div class="name">{{ t(`annotations.${annotation.name}`) }}</div>
+      <!-- <div class="name">{{ t(`annotations.${annotation.name}`) }}</div> -->
     </a-popover>
   
     <a-modal
