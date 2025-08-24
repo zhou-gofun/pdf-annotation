@@ -80,7 +80,7 @@ export class EditorHighLight extends Editor {
         const x = (elementBounding.x - fixBounding.x) / scale.x
         const y = (elementBounding.y - fixBounding.y + elementBounding.height/7) / scale.y
         const width = (elementBounding.width - 6) / scale.x
-        const height = (elementBounding.height / scale.y) * (6 / 9)
+        const height = (elementBounding.height / scale.y) * (7 / 9)
         return { x, y, width, height }
     }
 

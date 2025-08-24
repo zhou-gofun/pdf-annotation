@@ -22,7 +22,7 @@ const annotations = computed<IAnnotationType[]>(() => {
 })
 
 
-// 打开 Popbar - 完全按照原始React代码逻辑
+// 打开 Popbar - 使用选择区域的实际边界矩形
 const open = async (range: Range | null) => {
   currentRange.value = range
   
@@ -34,28 +34,26 @@ const open = async (range: Range | null) => {
 
   show.value = true
 
-  // 根据 endContainer 或 startContainer 获取边界矩形 - 完全按照原始逻辑
-  const { bottom, height, left, right, top, width, x, y } = range.endContainer.nodeType === 3
-    ? range.endContainer.parentElement!.getBoundingClientRect()
-    : (range.startContainer as any).parentElement!.getBoundingClientRect()
-
-  // 创建虚拟元素用于计算位置 - 完全按照原始逻辑
+  // 获取选择区域的实际边界矩形
+  const rangeRect = range.getBoundingClientRect()
+  
+  // 创建虚拟元素用于计算位置，使用选择区域的边界矩形
   const virtualEl = {
     getBoundingClientRect() {
       return {
-        width,
-        height,
-        x,
-        y,
-        left,
-        right,
-        top,
-        bottom
+        width: rangeRect.width,
+        height: rangeRect.height,
+        x: rangeRect.x,
+        y: rangeRect.y,
+        left: rangeRect.left,
+        right: rangeRect.right,
+        top: rangeRect.top,
+        bottom: rangeRect.bottom
       }
     }
   }
 
-  // 计算位置并调整菜单位置 - 完全按照原始逻辑
+  // 计算位置并调整菜单位置，确保在选择区域正下方居中
   if (containerRef.value) {
     const { x: posX, y: posY } = await computePosition(virtualEl, containerRef.value, {
       placement: 'bottom',
