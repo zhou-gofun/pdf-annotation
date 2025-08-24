@@ -21,10 +21,11 @@
 .CustomComment {
     width: 260px;
     position: absolute;
-    top: 82px;
+    top: 67px;
     right: 0;
-    height: calc(100vh - 82px);
+    height: calc(100vh - 67px);
     color: var(--main-color);
+    background-color: var(--toolbar-bg-color, #f8f9fa);
     border-left: 1px solid var(--toolbar-border-color);
     overflow: auto;
     font: message-box;

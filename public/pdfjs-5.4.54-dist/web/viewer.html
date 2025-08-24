@@ -187,8 +187,27 @@ See https://github.com/adobe-type-tools/cmap-resources
                   </button>
                 </div>
               </div>
-              <div id="toolbarViewerMiddle" class="toolbarHorizontalGroup">
-
+              <div id="toolbarViewerMiddle" class="toolbarHorizontalGroup toolbarPrimaryMenu">
+                <!-- Annotation Primary Menu Buttons -->
+                <button id="primaryAnnotateButton" class="primaryMenuButton" type="button" 
+                        tabindex="0" title="Annotate" data-category="annotate">
+                  <span class="toolbarButtonLabel">Annotate</span>
+                </button>
+                
+                <button id="primaryShapesButton" class="primaryMenuButton" type="button" 
+                        tabindex="0" title="Shapes" data-category="shapes">
+                  <span class="toolbarButtonLabel">Shapes</span>
+                </button>
+                
+                <button id="primaryInsertButton" class="primaryMenuButton" type="button" 
+                        tabindex="0" title="Insert" data-category="insert">
+                  <span class="toolbarButtonLabel">Insert</span>
+                </button>
+                
+                <button id="primaryMeasureButton" class="primaryMenuButton" type="button" 
+                        tabindex="0" title="Measure" data-category="measure">
+                  <span class="toolbarButtonLabel">Measure</span>
+                </button>
               </div>
               <div id="toolbarViewerRight" class="toolbarHorizontalGroup">
                 <div id="editorModeButtons" class="toolbarHorizontalGroup" role="radiogroup">
@@ -287,10 +306,13 @@ See https://github.com/adobe-type-tools/cmap-resources
                   <button id="printButton" class="toolbarButton" type="button" tabindex="0" data-l10n-id="pdfjs-print-button">
                     <span data-l10n-id="pdfjs-print-button-label"></span>
                   </button>
-                  
-
                   <button id="downloadButton" class="toolbarButton" type="button" tabindex="0" data-l10n-id="pdfjs-save-button">
                     <span data-l10n-id="pdfjs-save-button-label"></span>
+                  </button>
+                  
+                  <!-- 批注按钮 -->
+                  <button id="annotationToggleButton" class="toolbarButton" type="button" tabindex="0" title="批注">
+                    <span>批注</span>
                   </button>
                 </div>
 
