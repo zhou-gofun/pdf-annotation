@@ -8,12 +8,12 @@
     }
 
     #viewerContainer {
-        top: 107px !important;
-        right: 330px;
+        top: 82px !important;
+        right: 260px;
     }
 
     #sidebarContainer {
-        top: 107px !important;
+        top: 82px !important;
     }
 
     // #toolbarContainer {
@@ -45,4 +45,8 @@
     .PdfjsAnnotationExtension_painter_wrapper {
         display: block;
     }
+}
+
+.thumbnail {
+    border: 2px solid transparent !important;
 }

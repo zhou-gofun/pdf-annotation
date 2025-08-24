@@ -1,5 +1,5 @@
 import './scss/app.scss'
-import 'ant-design-vue/dist/reset.css'
+// import 'ant-design-vue/dist/reset.css'
 
 import type { EventBus, PDFPageView, PDFViewerApplication } from 'pdfjs'
 import { initializeI18n } from './locale/index'

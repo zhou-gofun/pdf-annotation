@@ -33,19 +33,11 @@ export class EditorHighLight extends Editor {
         // 获取基准元素的边界矩形，用于计算相对坐标
         const fixBounding = fixElement.getBoundingClientRect()
 
-        elements.forEach(spanEl => {
-            // 获取更精确的文本边界 - 减少宽度
-            const bounding = spanEl.getBoundingClientRect()
-            
-            // 计算更精确的宽度：减少左右padding，让高亮区域更贴合文本
-            const adjustedBounding = {
-                x: bounding.x,
-                y: bounding.y,
-                width: bounding.width,
-                height: bounding.height
-            }
-            console.log('adjustedBounding：', adjustedBounding)
-            
+        // 合并相邻的空元素与非空元素，确保连续性
+        const mergedBounds = this.mergeAdjacentElements(elements)
+        console.log('mergedBounds：', mergedBounds)
+
+        mergedBounds.forEach(adjustedBounding => {
             const { x, y, width, height } = this.calculateRelativePosition(adjustedBounding, fixBounding)
             const shape = this.createShape(x, y, width, height)
             this.currentShapeGroup?.konvaGroup.add(shape)
@@ -70,6 +62,75 @@ export class EditorHighLight extends Editor {
     }
 
     /**
+     * 合并相邻的元素以确保连续性
+     * 将空格或空内容元素与后面第一个非空元素合并
+     * @param elements HTMLSpanElement 数组
+     * @returns 合并后的边界矩形数组
+     */
+    private mergeAdjacentElements(elements: HTMLSpanElement[]): { x: number, y: number, width: number, height: number }[] {
+        if (elements.length === 0) {
+            return []
+        }
+
+        const mergedBounds: { x: number, y: number, width: number, height: number }[] = []
+        let i = 0
+
+        while (i < elements.length) {
+            const currentElement = elements[i]
+            const currentBounding = currentElement.getBoundingClientRect()
+            const currentText = currentElement.textContent?.trim() || ''
+
+            // 如果当前元素是空的或只包含空格
+            if (currentText === '' || currentText === ' ') {
+                // 寻找后面第一个非空元素
+                let j = i + 1
+                let nonEmptyFound = false
+                let combinedBounding = {
+                    x: currentBounding.x,
+                    y: currentBounding.y,
+                    width: currentBounding.width,
+                    height: currentBounding.height
+                }
+
+                while (j < elements.length) {
+                    const nextElement = elements[j]
+                    const nextBounding = nextElement.getBoundingClientRect()
+                    const nextText = nextElement.textContent?.trim() || ''
+
+                    // 扩展合并区域
+                    combinedBounding = {
+                        x: Math.min(combinedBounding.x, nextBounding.x),
+                        y: Math.min(combinedBounding.y, nextBounding.y),
+                        width: Math.max(combinedBounding.x + combinedBounding.width, nextBounding.x + nextBounding.width) - Math.min(combinedBounding.x, nextBounding.x),
+                        height: Math.max(combinedBounding.y + combinedBounding.height, nextBounding.y + nextBounding.height) - Math.min(combinedBounding.y, nextBounding.y)
+                    }
+
+                    if (nextText !== '' && nextText !== ' ') {
+                        // 找到非空元素，停止合并
+                        nonEmptyFound = true
+                        break
+                    }
+                    j++
+                }
+
+                mergedBounds.push(combinedBounding)
+                i = nonEmptyFound ? j + 1 : elements.length // 跳过已处理的元素
+            } else {
+                // 非空元素直接添加
+                mergedBounds.push({
+                    x: currentBounding.x,
+                    y: currentBounding.y,
+                    width: currentBounding.width,
+                    height: currentBounding.height
+                })
+                i++
+            }
+        }
+
+        return mergedBounds
+    }
+
+    /**
      * 计算元素的相对位置和尺寸，适配 Canvas 坐标系。
      * @param elementBounding 元素的边界矩形或自定义边界对象
      * @param fixBounding 基准元素的边界矩形
@@ -78,9 +139,9 @@ export class EditorHighLight extends Editor {
     private calculateRelativePosition(elementBounding: DOMRect | { x: number, y: number, width: number, height: number }, fixBounding: DOMRect) {
         const scale = this.konvaStage.scale()
         const x = (elementBounding.x - fixBounding.x) / scale.x
-        const y = (elementBounding.y - fixBounding.y + elementBounding.height/7) / scale.y
-        const width = (elementBounding.width - 6) / scale.x
-        const height = (elementBounding.height / scale.y) * (7 / 9)
+        const y = (elementBounding.y - fixBounding.y + elementBounding.height/12) / scale.y
+        const width = (elementBounding.width) / scale.x
+        const height = (elementBounding.height / scale.y) * 0.92
         return { x, y, width, height }
     }
 

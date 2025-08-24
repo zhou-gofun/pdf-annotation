@@ -26,7 +26,7 @@
             "selectPosition": "Please select a position",
             "signatureArea": "Signature",
             "uploadArea": "Upload Area",
-            "uploadHint": "Click to upload or drag and drop to here {{format}}, maxSize {{maxSize}}"
+            "uploadHint": "Click to upload or drag and drop to here {format}, maxSize {maxSize}"
         }
     },
     "editor": {
@@ -56,7 +56,7 @@
         "ok": "OK",
         "cancel": "Cancel",
         "clear": "Clear",
-        "fileSizeLimit": "The file size exceeds the {{value}} limit",
+        "fileSizeLimit": "The file size exceeds the {value} limit",
         "deleteConfirm": "Are you sure you want to delete?",
         "yes": "Yes",
         "no": "No",
@@ -84,8 +84,8 @@
         "opacity": "Opacity"
     },
     "comment": {
-        "total": "Comment {{value}}",
-        "page": "Page {{value}}",
+        "total": "Comment {value}",
+        "page": "Page {value}",
         "status": {
             "accepted": "Accepted",
             "rejected": "Rejected",
@@ -94,24 +94,24 @@
             "none": "None",
             "closed": "Closed"
         },
-        "statusText": "Set Status: {{value}}"
+        "statusText": "Set Status: {value}"
     },
     "pdf": {
         "generationSuccess": "File has been successfully generated and downloaded"
     },
     "dateFormat": {
-        "full": "{{month}}/{{day}}/{{year}} {{hour}}:{{minute}}",
-        "dayMonth": "{{month}}/{{day}}",
-        "dayMonthYear": "{{month}}/{{day}}/{{year}}"
+        "full": "{month}/{day}/{year} {hour}:{minute}",
+        "dayMonth": "{month}/{day}",
+        "dayMonthYear": "{month}/{day}/{year}"
     },
     "save": {
         "start": "Saving...",
         "success": "Saved successfully!",
-        "fail": "Failed to save. {{value}}",
-        "noPostUrl": "{{value}} not found."
+        "fail": "Failed to save. {value}",
+        "noPostUrl": "{value} not found."
     },
     "load": {
-        "fail": "Annotation Data Load Fail: {{value}}"
+        "fail": "Annotation Data Load Fail: {value}"
     },
     "export": {
         "fields": {
