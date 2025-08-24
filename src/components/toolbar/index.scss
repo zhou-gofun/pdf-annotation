@@ -5,8 +5,9 @@
 }
 
 .CustomToolbar {
-    width: 100%;
-    // height: 107px;
+    // 不要宽度，不然会撑开内容区域
+    // width: 100%;
+    height: 50px;
     display: flex;
     justify-content: center;
     align-items: center;

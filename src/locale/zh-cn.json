@@ -26,7 +26,7 @@
             "selectPosition": "请选择放置位置",
             "signatureArea": "签名处",
             "uploadArea": "上传区域",
-            "uploadHint": "点击上传或请将图片拖拽到此处，支持格式{{format}}, 最大 {{maxSize}}"
+            "uploadHint": "点击上传或请将图片拖拽到此处，支持格式{format}, 最大 {maxSize}"
         }
     },
     "editor": {
@@ -56,7 +56,7 @@
         "ok": "确定",
         "cancel": "取消",
         "clear": "清空",
-        "fileSizeLimit": "文件大小超出 {{value}} 限制",
+        "fileSizeLimit": "文件大小超出 {value} 限制",
         "deleteConfirm": "是否删除",
         "yes": "是",
         "no": "否",
@@ -84,8 +84,8 @@
         "opacity": "透明度"
     },
     "comment": {
-        "total": " {{value}} 条批注",
-        "page": "第{{value}}页",
+        "total": " {value} 条批注",
+        "page": "第{value}页",
         "status": {
             "accepted": "接受",
             "rejected": "拒绝",
@@ -94,24 +94,24 @@
             "none": "无",
             "closed": "关闭"
         },
-        "statusText": "将状态设置为 {{value}}"
+        "statusText": "将状态设置为 {value}"
     },
     "pdf": {
         "generationSuccess": "文件已生成！"
     },
     "dateFormat": {
-        "full": "{{year}}-{{month}}-{{day}} {{hour}}:{{minute}}",
-        "dayMonth": "{{month}}-{{day}}",
-        "dayMonthYear": "{{year}}-{{month}}-{{day}}"
+        "full": "{year}-{month}-{day} {hour}:{minute}",
+        "dayMonth": "{month}-{day}",
+        "dayMonthYear": "{year}-{month}-{day}"
     },
     "save": {
         "start": "正在保存...",
         "success": "保存成功！",
-        "fail": "保存失败，错误代码： {{value}}",
-        "noPostUrl": "未找到参数: {{value}}"
+        "fail": "保存失败，错误代码： {value}",
+        "noPostUrl": "未找到参数: {value}"
     },
     "load": {
-        "fail": "外部批注加载失败，{{value}}"
+        "fail": "外部批注加载失败，{value}"
     },
     "export": {
         "fields": {

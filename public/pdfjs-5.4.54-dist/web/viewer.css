@@ -6608,7 +6608,7 @@ dialog :link{
   width:-moz-fit-content;
 
   width:fit-content;
-  min-width:140px;
+  min-width:100px;
   padding:0;
   background-color:var(--dropdown-btn-bg-color);
   border:var(--dropdown-btn-border);

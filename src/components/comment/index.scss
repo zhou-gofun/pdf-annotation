@@ -19,11 +19,11 @@
     }
 }
 .CustomComment {
-    width: 330px;
+    width: 260px;
     position: absolute;
-    top: 107px;
+    top: 82px;
     right: 0;
-    height: calc(100vh - 107px);
+    height: calc(100vh - 82px);
     color: var(--main-color);
     border-left: 1px solid var(--toolbar-border-color);
     overflow: auto;
@@ -135,11 +135,11 @@
 
 @media all and (max-width: 780px) {
     .CustomComment {
-        width: 250px;
+        width: 260px;
     }
     .PdfjsAnnotationExtension {
         #viewerContainer {
-            right: 250px;
+            right: 260px;
         }
     }
 }
