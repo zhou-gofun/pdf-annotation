@@ -17,36 +17,89 @@ const SelectSvg = () => h('svg', {
 ])
 
 const HighlightSvg = () => h('svg', {
+  viewBox: '0 0 24 24',
   height: '1em',
-  fill: 'currentColor',
-  viewBox: '0 0 576 512'
+  fill: 'currentColor'
 }, [
-  h('path', {
+    h('defs', {}, [
+      h('style', {}, '.cls-1{fill:#8c8c8c;}')
+    ]),
+    h('title', {}, 'icon - line - tool - highlight'),
+    h('path', {
+    class: 'cls-1',
+    d: 'M9.91,13.07h3.86L11.84,8.46Zm5.46,3.68L14.62,15H9.05L7.77,18H5.63L10.45,6.64a1,1,0,0,1,1-.64h1a1.23,1.23,0,0,1,1,.64l2,4.91V4H5.85A2.22,2.22,0,0,0,3.63,6.22V17.78A2.22,2.22,0,0,0,5.85,20h9.52Z'
+  }),
+    h('path', {
     fill: 'currentColor',
-    d: 'M315 315l158.4-215L444.1 70.6 229 229 315 315zm-187 5l0 0V248.3c0-15.3 7.2-29.6 19.5-38.6L420.6 8.4C428 2.9 437 0 446.2 0c11.4 0 22.4 4.5 30.5 12.6l54.8 54.8c8.1 8.1 12.6 19 12.6 30.5c0 9.2-2.9 18.2-8.4 25.6L334.4 396.5c-9 12.3-23.4 19.5-38.6 19.5H224l-25.4 25.4c-12.5 12.5-32.8 12.5-45.3 0l-50.7-50.7c-12.5-12.5-12.5-32.8 0-45.3L128 320zM7 466.3l63-63 70.6 70.6-31 31c-4.5 4.5-10.6 7-17 7H24c-13.3 0-24-10.7-24-24v-4.7c0-6.4 2.5-12.5 7-17z'
+    class: 'cls-1',
+    d: 'M20.37,2V22h-2V2Z'
   })
 ])
 
 const StrikeoutSvg = () => h('svg', {
+  viewBox: '0 0 24 24',
   height: '1em',
-  fill: 'currentColor',
-  viewBox: '0 0 512 512'
+  fill: 'currentColor'
 }, [
+  h('defs', {}, [
+    h('style', {}, '.cls-1{fill:#abb0c4;}')
+  ]),
+  h('title', {}, 'icon - tool - text manipulation - strikethrough'),
+  h('rect', {
+  class: 'cls-1',
+  x: '3.13',
+  y: '11.31',
+  width: '17.74',
+  height: '1.7'
+}),
   h('path', {
-    fill: 'currentColor',
-    d: 'M161.3 144c3.2-17.2 14-30.1 33.7-38.6c21.1-9 51.8-12.3 88.6-6.5c11.9 1.9 48.8 9.1 60.1 12c17.1 4.5 34.6-5.6 39.2-22.7s-5.6-34.6-22.7-39.2c-14.3-3.8-53.6-11.4-66.6-13.4c-44.7-7-88.3-4.2-123.7 10.9c-36.5 15.6-64.4 44.8-71.8 87.3c-.1 .6-.2 1.1-.2 1.7c-2.8 23.9 .5 45.6 10.1 64.6c4.5 9 10.2 16.9 16.7 23.9H32c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H270.1c-.1 0-.3-.1-.4-.1l-1.1-.3c-36-10.8-65.2-19.6-85.2-33.1c-9.3-6.3-15-12.6-18.2-19.1c-3.1-6.1-5.2-14.6-3.8-27.4zM348.9 337.2c2.7 6.5 4.4 15.8 1.9 30.1c-3 17.6-13.8 30.8-33.9 39.4c-21.1 9-51.7 12.3-88.5 6.5c-18-2.9-49.1-13.5-74.4-22.1c-5.6-1.9-11-3.7-15.9-5.4c-16.8-5.6-34.9 3.5-40.5 20.3s3.5 34.9 20.3 40.5c3.6 1.2 7.9 2.7 12.7 4.3l0 0 0 0c24.9 8.5 63.6 21.7 87.6 25.6l0 0 .2 0c44.7 7 88.3 4.2 123.7-10.9c36.5-15.6 64.4-44.8 71.8-87.3c3.6-21 2.7-40.4-3.1-58.1H335.1c7 5.6 11.4 11.2 13.9 17.2z'
-  })
+  fill: 'currentColor',
+  class: 'cls-1',
+  d: 'M12,5l2.4,5.77h2.68l-3.28-8A1.49,1.49,0,0,0,12.64,2H11.49a1.24,1.24,0,0,0-1.16.77L7,10.73H9.59Zm3.25,8.62,2,4.74h2.57l-2-4.74ZM4.17,18.32H6.74l2-4.74H6.18Z'
+})
 ])
 
 const UnderlineSvg = () => h('svg', {
+  viewBox: '0 0 24 24',
   height: '1em',
-  fill: 'currentColor',
-  viewBox: '0 0 448 512'
+  fill: 'currentColor'
 }, [
+  h('defs', {}, [
+    h('style', {}, '.cls-1{fill:#abb0c4;}')
+  ]),
+  h('title', {}, 'icon - tool - text manipulation - underline'),
+  h('rect', {
+  class: 'cls-1',
+  x: '2.8',
+  y: '20.29',
+  width: '18.4',
+  height: '1.7'
+}),
   h('path', {
-    fill: 'currentColor',
-    d: 'M16 64c0-17.7 14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H128V224c0 53 43 96 96 96s96-43 96-96V96H304c-17.7 0-32-14.3-32-32s14.3-32 32-32h96c17.7 0 32 14.3 32 32s-14.3 32-32 32H384V224c0 88.4-71.6 160-160 160s-160-71.6-160-160V96H48C30.3 96 16 81.7 16 64zM0 448c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32z'
-  })
+  fill: 'currentColor',
+  class: 'cls-1',
+  d: 'M8.53,13.2h6.94l1.6,3.74h2.66L13.87,2.8a1.54,1.54,0,0,0-1.2-.8h-1.2a1.27,1.27,0,0,0-1.2.8l-6,14.14H6.93ZM12,5.07l2.4,5.73H9.6Z'
+})
+])
+
+const SquigglySvg = () => h('svg', {
+  viewBox: '0 0 24 24',
+  height: '1em',
+  fill: 'currentColor'
+}, [
+  h('defs', {}, [
+    h('style', {}, '.cls-1{fill:#abb0c4;}')
+  ]),
+  h('title', {}, 'icon - tool - text manipulation - squiggly'),
+  h('path', {
+  class: 'cls-1',
+  d: 'M21,20V22a3,3,0,0,1-2.56-1.41c-.38-.51-.64-.64-1-.64s-.51.13-1,.64A3.34,3.34,0,0,1,13.79,22a3,3,0,0,1-2.56-1.41c-.38-.51-.64-.64-1-.64s-.52.13-1,.64A3.34,3.34,0,0,1,6.62,22a3,3,0,0,1-2.57-1.41c-.38-.51-.64-.64-1-.64V17.9a3,3,0,0,1,2.56,1.41c.38.51.64.64,1,.64s.51-.13,1-.64a3.32,3.32,0,0,1,2.57-1.41,3,3,0,0,1,2.56,1.41c.38.51.64.64,1,.64s.52-.13,1-.64a3.31,3.31,0,0,1,2.56-1.41A3,3,0,0,1,20,19.31C20.33,19.82,20.59,20,21,20Z'
+}),
+  h('path', {
+  fill: 'currentColor',
+  class: 'cls-1',
+  d: 'M8.79,12.77h6.67L17,16.36h2.56L13.92,2.64A1.34,1.34,0,0,0,12.77,2H11.62a1.24,1.24,0,0,0-1.16.77L4.69,16.36H7.26Zm3.34-7.95,2.31,5.51H9.82Z'
+})
 ])
 
 const FreetextSvg = () => h('svg', {
@@ -258,6 +311,7 @@ export const SelectIcon = createIcon(SelectSvg)
 export const HighlightIcon = createIcon(HighlightSvg)
 export const StrikeoutIcon = createIcon(StrikeoutSvg)
 export const UnderlineIcon = createIcon(UnderlineSvg)
+export const SquigglyIcon = createIcon(SquigglySvg)
 export const FreetextIcon = createIcon(FreetextSvg)
 export const RectangleIcon = createIcon(RectangleSvg)
 export const CircleIcon = createIcon(EllipseSvg)

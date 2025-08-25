@@ -27,11 +27,30 @@
     .ant-modal-mask {
         backdrop-filter: blur(8px);
     }
+
+    // 一级菜单按钮样式
+    .primaryMenuButton {
+        &.active {
+            background-color: #007cad !important;
+            color: white !important;
+        }
+    }
 }
 
 .PdfjsAnnotationExtension_Comment_hidden {
     #viewerContainer {
         right: 0 !important;
+    }
+}
+
+// 当二级工具栏隐藏时，页面向上填充
+.PdfjsAnnotationExtension_SecondaryToolbar_hidden {
+    #viewerContainer {
+        top: 32px !important; // 减少toolbar的高度
+    }
+
+    #sidebarContainer {
+        top: 32px !important;
     }
 }
 
