@@ -5436,7 +5436,7 @@ body.wait::before{
   width:100%;
   height:var(--toolbar-height);
   background-color:var(--sidebar-toolbar-bg-color);
-  box-shadow:var(--toolbarSidebar-box-shadow);
+  /* box-shadow:var(--toolbarSidebar-box-shadow); */
   border-bottom:var(--toolbarSidebar-border-bottom);
   padding:var(--toolbar-vertical-padding) var(--toolbar-horizontal-padding);
   justify-content:space-between;

@@ -155,8 +155,11 @@ defineExpose({
             transition: background-color 0.2s ease;
 
             .icon {
-                font-size: 14px;
+                font-size: 22px;
                 line-height: 1;
+                display: flex;
+                justify-content: center;
+
             }
 
             &:hover {

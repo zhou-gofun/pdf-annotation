@@ -229,6 +229,10 @@ class PdfjsAnnotationExtension {
   private setupPrimaryMenuButtons(): void {
     // 等待DOM加载后设置事件监听器
     setTimeout(() => {
+      // 默认选中View按钮，隐藏二级菜单
+      this.selectedCategoryRef.value = 'view'
+      this.hideSecondaryToolbar()
+      
       // 设置一级菜单按钮事件
       const primaryMenuButtons = document.querySelectorAll('.primaryMenuButton')
       primaryMenuButtons.forEach(button => {
@@ -240,17 +244,19 @@ class PdfjsAnnotationExtension {
           primaryMenuButtons.forEach(btn => btn.classList.remove('active'))
           
           if (category) {
-            // 如果点击的是已选中的分类，则取消选择
-            if (this.selectedCategoryRef.value === category) {
-              this.selectedCategoryRef.value = ''
-            } else {
-              // 选择新分类
-              this.selectedCategoryRef.value = category
-              target.classList.add('active')
-            }
+            // 必须选中一个按钮，不能取消选中
+            this.selectedCategoryRef.value = category
+            target.classList.add('active')
             
-            // 重新渲染工具栏以应用过滤
-            this.updateToolbarCategory()
+            if (category === 'view') {
+              // 选中View时隐藏二级菜单，页面向上填充
+              this.hideSecondaryToolbar()
+            } else {
+              // 选中其他按钮时显示二级菜单，页面向下移
+              this.showSecondaryToolbar()
+              // 重新渲染工具栏以应用过滤
+              this.updateToolbarCategory()
+            }
           }
         })
       })
@@ -278,6 +284,24 @@ class PdfjsAnnotationExtension {
         })
       }
     }, 100)
+  }
+
+  private hideSecondaryToolbar(): void {
+    const customToolbar = document.querySelector('.CustomToolbar') as HTMLElement
+    if (customToolbar) {
+      customToolbar.style.display = 'none'
+    }
+    // 页面向上填充
+    document.body.classList.add('PdfjsAnnotationExtension_SecondaryToolbar_hidden')
+  }
+
+  private showSecondaryToolbar(): void {
+    const customToolbar = document.querySelector('.CustomToolbar') as HTMLElement
+    if (customToolbar) {
+      customToolbar.style.display = 'block'
+    }
+    // 页面向下移，留出二级菜单的位置
+    document.body.classList.remove('PdfjsAnnotationExtension_SecondaryToolbar_hidden')
   }
 
   private updateToolbarCategory(): void {
