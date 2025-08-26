@@ -31,7 +31,8 @@ import {
   Divider,
   Typography,
   Dropdown,
-  Upload
+  Upload,
+  Slider
 } from 'ant-design-vue'
 import i18n from './locale/index'
 // Vue components
@@ -49,7 +50,7 @@ function createConfiguredApp(component: any, props: any) {
   const app = createApp(component, props)
   
   // 只安装实际使用的组件，避免全量安装
-  const components = [Button, Modal, Space, Popover, Form, Input, Select, Row, Col, Radio, Checkbox, Divider, Typography, Dropdown, Upload]
+  const components = [Button, Modal, Space, Popover, Form, Input, Select, Row, Col, Radio, Checkbox, Divider, Typography, Dropdown, Upload, Slider]
   components.forEach(comp => app.use(comp))
   
   // 最小化 message 服务配置
@@ -331,7 +332,10 @@ class PdfjsAnnotationExtension {
           } else if (type === 'pdf') {
             await this.exportPdf()
           }
-        }
+        },
+        onUndo: () => this.handleUndo(),
+        onRedo: () => this.handleRedo(),
+        onEraser: () => this.handleEraser()
       })
       const instance = app.mount(el)
       this.customToolbarRef.value = instance
@@ -356,7 +360,10 @@ class PdfjsAnnotationExtension {
         } else if (type === 'pdf') {
           await this.exportPdf()
         }
-      }
+      },
+      onUndo: () => this.handleUndo(),
+      onRedo: () => this.handleRedo(),
+      onEraser: () => this.handleEraser()
     })
     const instance = app.mount(el)
     this.customToolbarRef.value = instance
@@ -654,6 +661,27 @@ class PdfjsAnnotationExtension {
               loading: false
           },
       })
+  }
+
+  private handleUndo(): void {
+    // 调用painter的撤销功能
+    if (this.painter) {
+      this.painter.undo()
+    }
+  }
+
+  private handleRedo(): void {
+    // 调用painter的重做功能
+    if (this.painter) {
+      this.painter.redo()
+    }
+  }
+
+  private handleEraser(): void {
+    // 激活擦除模式
+    if (this.painter) {
+      this.painter.activateEraser()
+    }
   }
 
   public hasUnsavedChanges(): boolean {

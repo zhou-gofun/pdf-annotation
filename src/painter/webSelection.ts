@@ -5,19 +5,23 @@ export class WebSelection {
     isEditing = false
     onSelect: (range: Range | null) => void
     onHighlight: (selection: Partial<Record<number, any[]>>) => void
+    onAutoAnnotate?: (range: Range) => void  // 新增自动注释回调
     highlighterObj: Highlighter | null = null
 
     private isSelecting = false
 
     constructor({
         onSelect,
-        onHighlight
+        onHighlight,
+        onAutoAnnotate
     }: {
         onSelect: (range: Range | null) => void
         onHighlight: (selection: Partial<Record<number, any[]>>) => void
+        onAutoAnnotate?: (range: Range) => void
     }) {
         this.onSelect = onSelect
         this.onHighlight = onHighlight
+        this.onAutoAnnotate = onAutoAnnotate
     }
 
     create(root: HTMLElement) {
@@ -61,7 +65,12 @@ export class WebSelection {
                         const range = selection.getRangeAt(0)
                         // 只有当选择非空且包含文本时才触发
                         if (!range.collapsed && range.toString().trim().length > 0) {
-                            this.onSelect(range)
+                            // 如果有自动注释回调并且当前有选中的工具，则自动应用
+                            if (this.onAutoAnnotate) {
+                                this.onAutoAnnotate(range)
+                            } else {
+                                this.onSelect(range)
+                            }
                         } else {
                             this.onSelect(null)
                         }
@@ -87,7 +96,12 @@ export class WebSelection {
                         const range = selection.getRangeAt(0)
                         // 只有当选择非空且包含文本时才触发
                         if (!range.collapsed && range.toString().trim().length > 0) {
-                            this.onSelect(range)
+                            // 如果有自动注释回调并且当前有选中的工具，则自动应用
+                            if (this.onAutoAnnotate) {
+                                this.onAutoAnnotate(range)
+                            } else {
+                                this.onSelect(range)
+                            }
                         } else {
                             this.onSelect(null)
                         }
