@@ -522,24 +522,76 @@ export class Painter {
      * @description 撤销功能
      */
     public undo() {
-        // TODO: 实现撤销功能
-        console.log('Undo functionality to be implemented')
+        const success = this.store.undo()
+        if (success) {
+            // 重新渲染所有页面
+            this.refreshAllPages()
+        }
     }
 
     /**
      * @description 重做功能
      */
     public redo() {
-        // TODO: 实现重做功能
-        console.log('Redo functionality to be implemented')
+        const success = this.store.redo()
+        if (success) {
+            // 重新渲染所有页面
+            this.refreshAllPages()
+        }
     }
 
     /**
      * @description 激活擦除模式
      */
     public activateEraser() {
-        // TODO: 实现擦除功能
-        console.log('Eraser functionality to be implemented')
+        // 设置擦除模式
+        this.currentAnnotation = null
+        this.setEraserMode(true)
+    }
+
+    /**
+     * @description 设置擦除模式
+     */
+    private setEraserMode(enabled: boolean) {
+        // 为所有页面的konva stage添加擦除事件监听器
+        this.konvaCanvasStore.forEach((canvas) => {
+            if (enabled) {
+                // 添加擦除事件监听
+                canvas.konvaStage.on('click', this.handleEraserClick.bind(this))
+            } else {
+                // 移除擦除事件监听
+                canvas.konvaStage.off('click', this.handleEraserClick.bind(this))
+            }
+        })
+    }
+
+    /**
+     * @description 处理擦除点击事件
+     */
+    private handleEraserClick(event: any) {
+        const target = event.target
+        if (target && target.parent && target.parent.id && target.parent.id() !== 'background') {
+            const annotationId = target.parent.id()
+            this.deleteAnnotation(annotationId, true)
+        }
+    }
+
+    /**
+     * @description 重新渲染所有页面
+     */
+    private refreshAllPages() {
+        this.konvaCanvasStore.forEach((canvas, pageNumber) => {
+            // 清理当前页面的所有注释
+            const layers = canvas.konvaStage.children
+            layers.forEach(layer => {
+                if (layer.id() !== 'background') {
+                    layer.destroyChildren()
+                }
+            })
+            
+            // 重新绘制当前页面的注释
+            this.reDrawAnnotation(pageNumber)
+        })
     }
 
     /**
