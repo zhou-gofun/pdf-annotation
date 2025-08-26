@@ -170,6 +170,15 @@ export class Painter {
                         }
                     }
                 })
+            },
+            onAutoAnnotate: range => {
+                // 自动注释回调：当有工具选中时，自动应用该工具
+                if (this.currentAnnotation) {
+                    this.autoAnnotateRange(range, this.currentAnnotation)
+                } else {
+                    // 没有工具选中时，显示工具栏
+                    this.onWebSelectionSelected(range)
+                }
             }
         })
         this.transform = new Transform(PDFViewerApplication)
@@ -394,10 +403,52 @@ export class Painter {
         this.webSelection.create(rootElement)
     }
 
+    /**
+     * @description 判断是否为可自动注释的类别
+     */
+    private isAnnotateCategory(annotation: IAnnotationType): boolean {
+        return [
+            Annotation.HIGHLIGHT,
+            Annotation.UNDERLINE,
+            Annotation.STRIKEOUT,
+            Annotation.FREE_HIGHLIGHT
+        ].includes(annotation.type)
+    }
+
+    /**
+     * @description 设置自动注释模式
+     * @param enabled 是否启用自动注释
+     */
+    public setAutoAnnotateMode(enabled: boolean) {
+        // 通过设置onAutoAnnotate回调来控制自动注释
+        if (enabled && this.currentAnnotation) {
+            // 启用自动注释时，设置回调
+            this.webSelection.onAutoAnnotate = (range: Range) => {
+                if (this.currentAnnotation) {
+                    this.autoAnnotateRange(range, this.currentAnnotation)
+                } else {
+                    this.onWebSelectionSelected(range)
+                }
+            }
+        } else {
+            // 禁用自动注释时，清除回调
+            this.webSelection.onAutoAnnotate = undefined
+        }
+    }
+
     public activate(annotation: IAnnotationType | null, dataTransfer: string | null): void {
         this.currentAnnotation = annotation
         this.disablePainting()
         this.saveTempDataTransfer(dataTransfer ?? '')
+
+        // 根据注释类型来设置自动注释模式
+        if (annotation && this.isAnnotateCategory(annotation)) {
+            // 对于可自动应用的注释类型，启用自动注释
+            this.setAutoAnnotateMode(true)
+        } else {
+            // 其他情况禁用自动注释
+            this.setAutoAnnotateMode(false)
+        }
 
         if (!annotation) {
             return
@@ -441,6 +492,54 @@ export class Painter {
     public highlightRange(range: Range, annotation: IAnnotationType) {
         this.currentAnnotation = annotation
         this.webSelection.highlight(range)
+    }
+
+    /**
+     * @description 自动应用注释到选中的文本
+     * @param range 
+     * @param annotation 
+     */
+    public autoAnnotateRange(range: Range, annotation: IAnnotationType) {
+        if (!range || !annotation) return
+
+        // 根据不同的注释类型自动应用
+        switch (annotation.type) {
+            case Annotation.HIGHLIGHT:
+            case Annotation.UNDERLINE:
+            case Annotation.STRIKEOUT:
+            case Annotation.FREE_HIGHLIGHT:
+                this.highlightRange(range, annotation)
+                break
+            // 其他类型的注释可以在这里扩展
+            default:
+                // 对于其他类型，仍然显示工具栏让用户选择
+                this.onWebSelectionSelected(range)
+                break
+        }
+    }
+
+    /**
+     * @description 撤销功能
+     */
+    public undo() {
+        // TODO: 实现撤销功能
+        console.log('Undo functionality to be implemented')
+    }
+
+    /**
+     * @description 重做功能
+     */
+    public redo() {
+        // TODO: 实现重做功能
+        console.log('Redo functionality to be implemented')
+    }
+
+    /**
+     * @description 激活擦除模式
+     */
+    public activateEraser() {
+        // TODO: 实现擦除功能
+        console.log('Eraser functionality to be implemented')
     }
 
     /**

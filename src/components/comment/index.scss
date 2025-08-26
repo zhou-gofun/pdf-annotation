@@ -3,6 +3,14 @@
         display: none;
     }
 }
+
+// 当二级工具栏隐藏时，自适应高度
+.PdfjsAnnotationExtension_SecondaryToolbar_hidden {
+    .CustomComment {
+        top: 32px;
+        height: calc(100vh - 32px);
+    }
+}
 .CustomComment_filterContent {
     ul,
     li {
