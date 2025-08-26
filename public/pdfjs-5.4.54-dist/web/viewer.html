@@ -308,11 +308,19 @@ See https://github.com/adobe-type-tools/cmap-resources
                 <div id="editorModeSeparator" class="verticalToolbarSeparator"></div>
 
                 <div class="toolbarHorizontalGroup hiddenMediumView">
-                  <button id="printButton" class="toolbarButton" type="button" tabindex="0" data-l10n-id="pdfjs-print-button">
+
+                  <button id="printButton" class="hidden toolbarButton" type="button" tabindex="0" data-l10n-id="pdfjs-print-button">
                     <span data-l10n-id="pdfjs-print-button-label"></span>
                   </button>
-                  <button id="downloadButton" class="toolbarButton" type="button" tabindex="0" data-l10n-id="pdfjs-save-button">
+                  <button id="downloadButton" class="hidden toolbarButton" type="button" tabindex="0" data-l10n-id="pdfjs-save-button">
                     <span data-l10n-id="pdfjs-save-button-label"></span>
+                  </button>
+
+                  <button id="saveButton" class="toolbarButton" type="button" tabindex="0" title="保存">
+                    <span>保存</span>
+                  </button>
+                  <button id="exportButton" class="toolbarButton" type="button" tabindex="0" title="导出">
+                    <span>导出</span>
                   </button>
                   
                   <!-- 批注按钮 -->
@@ -320,6 +328,7 @@ See https://github.com/adobe-type-tools/cmap-resources
                     <span>批注</span>
                   </button>
                 </div>
+                
 
                 <div class="verticalToolbarSeparator hiddenMediumView"></div>
 

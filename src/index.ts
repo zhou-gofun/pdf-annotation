@@ -284,6 +284,22 @@ class PdfjsAnnotationExtension {
           }
         })
       }
+
+      // 设置保存和导出按钮事件
+      const saveButton = document.getElementById('saveButton')
+      if (saveButton) {
+        saveButton.addEventListener('click', () => {
+          this.saveData()
+        })
+      }
+
+      const exportButton = document.getElementById('exportButton')
+      if (exportButton) {
+        exportButton.addEventListener('click', () => {
+          // 可以显示导出选项菜单或直接导出PDF
+          this.exportPdf()
+        })
+      }
     }, 100)
   }
 

@@ -50,7 +50,7 @@ const StrikeoutSvg = () => h('svg', {
   x: '3.13',
   y: '11.31',
   width: '17.74',
-  height: '1.7'
+  height: '2.5' // 增加线宽，从1.7增加到2.5
 }),
   h('path', {
   fill: 'currentColor',
@@ -68,18 +68,18 @@ const UnderlineSvg = () => h('svg', {
     h('style', {}, '.cls-1{fill:#abb0c4;}')
   ]),
   h('title', {}, 'icon - tool - text manipulation - underline'),
-  h('rect', {
-  class: 'cls-1',
-  x: '2.8',
-  y: '20.29',
-  width: '18.4',
-  height: '1.7'
-}),
   h('path', {
-  fill: 'currentColor',
-  class: 'cls-1',
-  d: 'M8.53,13.2h6.94l1.6,3.74h2.66L13.87,2.8a1.54,1.54,0,0,0-1.2-.8h-1.2a1.27,1.27,0,0,0-1.2.8l-6,14.14H6.93ZM12,5.07l2.4,5.73H9.6Z'
-})
+    fill: 'currentColor',
+    class: 'cls-1',
+    d: 'M8.53,13.2h6.94l1.6,3.74h2.66L13.87,2.8a1.54,1.54,0,0,0-1.2-.8h-1.2a1.27,1.27,0,0,0-1.2.8l-6,14.14H6.93ZM12,5.07l2.4,5.73H9.6Z'
+  }),
+  h('rect', {
+    class: 'cls-1',
+    x: '2.8',
+    y: '20.29',
+    width: '18.4',
+    height: '2.5' // 增加线宽，从1.7增加到2.5
+  })
 ])
 
 const SquigglySvg = () => h('svg', {

@@ -8,11 +8,46 @@ export class Store {
     private annotationStore: Map<string, IAnnotationStore> = new Map()
     // 原有注释
     private originalAnnotationStore: Map<string, IAnnotationStore> = new Map()
+    // 历史记录
+    private history: Array<Map<string, IAnnotationStore>> = []
+    // 当前历史索引
+    private currentHistoryIndex: number = -1
+    // 最大历史记录数
+    private maxHistorySize: number = 50
+    
     public pdfViewerApplication: PDFViewerApplication
     
 
     constructor({ PDFViewerApplication }: { PDFViewerApplication: PDFViewerApplication }) {
         this.pdfViewerApplication = PDFViewerApplication
+        // 初始化时保存初始状态
+        this.saveToHistory()
+    }
+
+    /**
+     * 保存当前状态到历史记录
+     */
+    private saveToHistory(): void {
+        // 创建当前状态的深拷贝
+        const currentState = new Map()
+        for (const [id, annotation] of this.annotationStore) {
+            currentState.set(id, { ...annotation })
+        }
+
+        // 如果不是在历史记录末尾，删除之后的记录
+        if (this.currentHistoryIndex < this.history.length - 1) {
+            this.history = this.history.slice(0, this.currentHistoryIndex + 1)
+        }
+
+        // 添加新状态
+        this.history.push(currentState)
+        this.currentHistoryIndex++
+
+        // 限制历史记录数量
+        if (this.history.length > this.maxHistorySize) {
+            this.history.shift()
+            this.currentHistoryIndex--
+        }
     }
 
     /**
@@ -37,6 +72,9 @@ export class Store {
         this.annotationStore.set(store.id, store)
         if(isOriginal) {
             this.originalAnnotationStore.set(store.id, store)
+        } else {
+            // 只有非原有注释才保存历史记录
+            this.saveToHistory()
         }
         return store
     }
@@ -56,6 +94,7 @@ export class Store {
                     date: formatTimestamp(Date.now())
                 }
                 this.annotationStore.set(id, updatedAnnotation)
+                this.saveToHistory()
                 return updatedAnnotation
             }
         } else {
@@ -80,8 +119,64 @@ export class Store {
     public delete(id: string): void {
         if (this.annotationStore.has(id)) {
             this.annotationStore.delete(id)
+            this.saveToHistory()
         } else {
             console.warn(`Annotation with id ${id} not found.`)
+        }
+    }
+
+    /**
+     * 撤销操作
+     */
+    public undo(): boolean {
+        if (this.canUndo()) {
+            this.currentHistoryIndex--
+            this.restoreFromHistory()
+            return true
+        }
+        return false
+    }
+
+    /**
+     * 重做操作
+     */
+    public redo(): boolean {
+        if (this.canRedo()) {
+            this.currentHistoryIndex++
+            this.restoreFromHistory()
+            return true
+        }
+        return false
+    }
+
+    /**
+     * 是否可以撤销
+     */
+    public canUndo(): boolean {
+        return this.currentHistoryIndex > 0
+    }
+
+    /**
+     * 是否可以重做
+     */
+    public canRedo(): boolean {
+        return this.currentHistoryIndex < this.history.length - 1
+    }
+
+    /**
+     * 从历史记录恢复状态
+     */
+    private restoreFromHistory(): void {
+        if (this.currentHistoryIndex >= 0 && this.currentHistoryIndex < this.history.length) {
+            const historicalState = this.history[this.currentHistoryIndex]
+            
+            // 清除当前状态
+            this.annotationStore.clear()
+            
+            // 恢复历史状态
+            for (const [id, annotation] of historicalState) {
+                this.annotationStore.set(id, { ...annotation })
+            }
         }
     }
 
