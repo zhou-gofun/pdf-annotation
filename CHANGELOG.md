@@ -5,7 +5,115 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且此项目遵循 [语义化版本控制](https://semver.org/spec/v2.0.0.html)。
 
-## [2.0.0] - 2025-08-23
+## [2.3.0] - 2025-08-27
+
+### 🎉 新增功能
+- ✅ **橡皮擦轨迹碰撞检测**: 实现了基于轨迹的智能擦除功能
+  - 新增 `src/painter/editor/editor_eraser.ts` - 完整的橡皮擦编辑器类
+  - 实现实时轨迹显示：红色半透明线条跟随鼠标移动
+  - 高性能碰撞检测算法：使用边界矩形数学计算精确检测注释交集
+  - 智能隐藏机制：擦除轨迹与注释重合时立即隐藏注释，不保存轨迹本身
+  - 添加删除回调系统：支持外部监听删除事件
+
+### 🐛 重大修复
+- ✅ **文本选择注释逻辑修复**: 解决了波浪线、下划线、删除线工具的核心问题
+  - **关键修复** `src/painter/editor/editor_highlight.ts:20-21` - EditorHighLight构造函数
+    - 修复硬编码 `editorType: Annotation.HIGHLIGHT` 的问题
+    - 改为正确使用传入的 `editorType` 参数
+    - **影响范围**: HIGHLIGHT、UNDERLINE、STRIKEOUT、SQUIGGLY 四个工具现在都能正常工作
+  - **修复前**: 所有文本选择类工具都被当作HIGHLIGHT处理，需要弹出popbar选择
+  - **修复后**: 选中工具后直接选择文字即可添加对应类型的注释
+
+### ✨ 功能增强  
+- ✅ **波浪线浪宽调节**: 为波浪线工具添加完整的参数调节功能
+  - **配置更新** `src/const/definitions.ts:305` - 启用SQUIGGLY的strokeWidth编辑
+  - **算法改进** `src/painter/editor/editor_highlight.ts:179-206` - createSquigglyShape方法重构
+    - 波浪幅度根据strokeWidth动态调整: `amplitude = (height * 0.2) * strokeWidth`
+    - 线条宽度自适应: `strokeWidth: Math.max(strokeWidth * 0.5, 0.3)`
+  - **UI控制** `src/components/toolbar/CustomToolbar.vue` - 新增浪宽滑块
+    - 添加条件渲染的stroke-width-section
+    - 范围1-5，步长0.5，实时调节
+    - 新增handleStrokeWidthChange函数和相关CSS样式
+
+### 🎨 视觉优化
+- ✅ **图标颜色统一**: 修复前4个工具图标显示灰色的问题
+  - **关键修复** `src/const/icon.ts` - 批量替换硬编码颜色
+    - StrikeoutSvg、UnderlineSvg、SquigglySvg三个图标
+    - 将 `.cls-1{fill:#abb0c4;}` 改为 `.cls-1{fill:currentColor;}`
+  - **效果**: 所有工具图标在未选中状态下统一显示黑色
+
+- ✅ **鼠标指针样式统一**: 修复FreeHighlight与FreeHand指针不一致的问题  
+  - **修复** `src/painter/painter.scss:55-66` - CSS选择器重构
+    - FreeHighlight(type 9)从image-cursor组移至与FreeHand(type 8)共用选择器
+    - 两个工具现在都使用 `var(--editorFreeHighlight-editing-cursor)`
+
+### 🔧 代码优化
+- ✅ **TypeScript错误修复**: 完善EditorEraser类的类型安全
+  - 修复getFgLayer不存在错误，改用getBgLayer
+  - 添加globalPointerUpHandler方法实现
+  - 使用下划线前缀避免未使用参数警告
+
+### 📋 技术细节
+- **碰撞检测算法**: 使用边界矩形交集算法，计算橡皮擦圆形区域与注释矩形的最短距离
+- **实时视觉反馈**: 橡皮擦轨迹实时显示但不保存，注释隐藏立即生效
+- **响应式参数调节**: strokeWidth变化实时更新波浪线形状和视觉效果
+- **CSS模块化**: stroke-width-section样式独立，与opacity-section保持一致
+
+### 🎯 用户体验改进
+- 📝 **直接文本注释**: 波浪线、下划线、删除线选中后可直接选择文字添加注释
+- 🎨 **参数化调节**: 波浪线浪宽可通过UI滑块实时调节(1-5范围)
+- 🖱️ **统一交互**: FreeHighlight与FreeHand使用相同的鼠标指针样式
+- ⚡ **智能擦除**: 橡皮擦轨迹实时显示，接触注释即隐藏，性能优化
+- 👁️ **视觉一致**: 所有工具图标统一黑色显示
+
+### 📝 详细修改文件列表
+
+**核心修复**:
+- `src/painter/editor/editor_highlight.ts` - 修复EditorHighLight构造函数逻辑
+- `src/const/icon.ts` - 统一图标颜色显示
+
+**新增文件**:
+- `src/painter/editor/editor_eraser.ts` - 橡皮擦编辑器完整实现
+
+**功能扩展**:  
+- `src/const/definitions.ts` - SQUIGGLY工具strokeWidth支持
+- `src/components/toolbar/CustomToolbar.vue` - 浪宽调节UI和逻辑
+- `src/painter/painter.scss` - 鼠标指针样式统一
+
+---
+
+## [2.2.1] - 2025-08-27 (根据changelog.md合并)
+
+### 🎉 代码重构
+- ✅ **图标逻辑优化**: 将CustomToolbar.vue中的ColorableIcon逻辑移至src/const/icon.ts
+  - 创建`createColorableIcon`函数，支持参数化颜色配置
+  - 简化CustomToolbar.vue中的图标处理逻辑
+  - 统一图标管理，便于维护
+
+### 🔧 工具行为优化  
+- ✅ **持续工具模式**: 修改Freehand、FreeHighlight工具行为
+  - 将`isOnce: true`改为`isOnce: false`
+  - 选中后持续有效，直到切换到其他工具
+  - 提升用户体验，符合专业绘图软件习惯
+
+### ✨ 功能完善
+- ✅ **FreeHighlight增强**: 添加完整的样式配置支持
+  - 新增`styleEditable`配置，支持颜色、透明度、线宽调整
+  - 在颜色配置栏中正常显示和编辑
+  - 与其他工具保持一致的交互体验
+
+### 🛠️ 技术改进
+- ✅ 优化图标组件架构，支持动态参数传递
+- ✅ 统一工具持久化行为，提升操作连续性
+- ✅ 完善工具样式配置系统
+
+### 🔄 待实现功能
+- 🔄 **橡皮擦轨迹删除**: 需要底层绘图引擎支持碰撞检测
+- 🔄 **波浪线功能验证**: 需要测试完整的绘制流程
+
+---
+
+## [2.2.0] - 2025-08-26
 
 ### 🎉 重大更新
 

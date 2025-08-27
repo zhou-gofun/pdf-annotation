@@ -13,9 +13,11 @@ import {
     StampIcon,
     StrikeoutIcon,
     UnderlineIcon,
+    SquigglyIcon,
     NoteIcon,
     ArrowIcon,
-    CloudIcon
+    CloudIcon,
+    EraserIcon
 } from './icon'
 
 export type PdfjsAnnotationSubtype =
@@ -94,16 +96,18 @@ export const Annotation = {
     HIGHLIGHT: 1, // 高亮批注
     STRIKEOUT: 2, // 删除线批注
     UNDERLINE: 3, // 下划线批注
-    FREETEXT: 4, // 自由文本批注
-    RECTANGLE: 5, // 矩形批注
-    CIRCLE: 6, // 圆形批注
-    FREEHAND: 7, // 自由绘制批注
-    FREE_HIGHLIGHT: 8, // 自由高亮批注
-    SIGNATURE: 9, // 签名批注
-    STAMP: 10, // 盖章批注
-    NOTE: 11, // 注释
-    ARROW: 12, // 箭头批注
-    CLOUD: 13 // 云线
+    SQUIGGLY: 4, // 波浪线批注
+    FREETEXT: 5, // 自由文本批注
+    RECTANGLE: 6, // 矩形批注
+    CIRCLE: 7, // 圆形批注
+    FREEHAND: 8, // 自由绘制批注
+    FREE_HIGHLIGHT: 9, // 自由高亮批注
+    SIGNATURE: 10, // 签名批注
+    STAMP: 11, // 盖章批注
+    NOTE: 12, // 注释
+    ARROW: 13, // 箭头批注
+    CLOUD: 14, // 云线
+    ERASER: 15 // 橡皮擦
 }
 
 export interface AnnotationType {
@@ -112,6 +116,7 @@ export interface AnnotationType {
     HIGHLIGHT: number, // 高亮批注
     STRIKEOUT: number, // 删除线批注
     UNDERLINE: number, // 下划线批注
+    SQUIGGLY: number, // 波浪线批注
     FREETEXT: number, // 自由文本批注
     RECTANGLE: number, // 矩形批注
     CIRCLE: number, // 圆形批注
@@ -121,7 +126,8 @@ export interface AnnotationType {
     STAMP: number, // 盖章批注
     NOTE: number, // 注释
     ARROW: number, // 箭头批注
-    CLOUD: number // 云线
+    CLOUD: number, // 云线
+    ERASER: number // 橡皮擦
 }
 
 
@@ -281,6 +287,25 @@ export const annotationDefinitions: IAnnotationType[] = [
         } // 是否可编辑样式
     },
     {
+        name: 'squiggly',
+        type: Annotation.SQUIGGLY,
+        pdfjsEditorType: PdfjsAnnotationEditorType.HIGHLIGHT,
+        pdfjsAnnotationType: PdfjsAnnotation.SQUIGGLY,
+        subtype: 'Squiggly',
+        isOnce: false,
+        resizable: false,
+        draggable: false,
+        icon: SquigglyIcon,
+        style: {
+            color: defaultOptions.setting.SQUIGGLY_COLOR, // 默认波浪线颜色
+        },
+        styleEditable: {
+            color: true,
+            opacity: false,
+            strokeWidth: true
+        } // 是否可编辑样式
+    },
+    {
         name: 'rectangle',
         type: Annotation.RECTANGLE,
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
@@ -331,7 +356,15 @@ export const annotationDefinitions: IAnnotationType[] = [
         isOnce: true,
         resizable: false,
         draggable: true,
-        icon: NoteIcon
+        icon: NoteIcon,
+        style: {
+            color: defaultOptions.setting.COLOR, // 默认note颜色
+        },
+        styleEditable: {
+            color: true,
+            opacity: false,
+            strokeWidth: false
+        } // 是否可编辑样式
     },
     {
         name: 'arrow',
@@ -381,7 +414,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
         pdfjsAnnotationType: PdfjsAnnotation.INK,
         subtype: 'Ink',
-        isOnce: true,
+        isOnce: false, // 改为持续有效
         resizable: true,
         draggable: true,
         icon: FreehandIcon,
@@ -402,7 +435,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         pdfjsEditorType: PdfjsAnnotationEditorType.INK,
         pdfjsAnnotationType: PdfjsAnnotation.INK,
         subtype: 'Highlight',
-        isOnce: true,
+        isOnce: false, // 改为持续有效
         resizable: true,
         draggable: true,
         icon: FreeHighlightIcon,
@@ -414,7 +447,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         styleEditable: {
             color: true,
             opacity: true,
-            strokeWidth: false
+            strokeWidth: true
         } // 是否可编辑样式
     },
     {
@@ -458,6 +491,17 @@ export const annotationDefinitions: IAnnotationType[] = [
         resizable: true,
         draggable: true,
         icon: StampIcon
+    },
+    {
+        name: 'eraser',
+        type: Annotation.ERASER,
+        pdfjsEditorType: PdfjsAnnotationEditorType.NONE,
+        pdfjsAnnotationType: PdfjsAnnotation.NONE,
+        subtype: undefined,
+        isOnce: false,
+        resizable: false,
+        draggable: false,
+        icon: EraserIcon
     }
 ]
 

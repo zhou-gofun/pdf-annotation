@@ -411,6 +411,7 @@ export class Painter {
             Annotation.HIGHLIGHT,
             Annotation.UNDERLINE,
             Annotation.STRIKEOUT,
+            Annotation.SQUIGGLY,
             Annotation.FREE_HIGHLIGHT
         ].includes(annotation.type)
     }
@@ -507,6 +508,7 @@ export class Painter {
             case Annotation.HIGHLIGHT:
             case Annotation.UNDERLINE:
             case Annotation.STRIKEOUT:
+            case Annotation.SQUIGGLY:
             case Annotation.FREE_HIGHLIGHT:
                 this.highlightRange(range, annotation)
                 break
@@ -887,6 +889,7 @@ export class Painter {
             case Annotation.HIGHLIGHT:
             case Annotation.UNDERLINE:
             case Annotation.STRIKEOUT:
+            case Annotation.SQUIGGLY:
                 editor = new EditorHighLight(
                     {
                         userName: this.userName,

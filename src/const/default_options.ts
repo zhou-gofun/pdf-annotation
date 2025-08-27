@@ -79,6 +79,7 @@ const defaultOptions = {
         HIGHLIGHT_COLOR: color[2], // 默认高亮颜色
         STRIKEOUT_COLOR: color[0], // 默认删除线颜色
         UNDERLINE_COLOR: color[6], // 默认下划线颜色
+        SQUIGGLY_COLOR: color[8], // 默认波浪线颜色
         STROKE_WIDTH: 2, // 默认线条宽度
         OPACITY: 1, // 默认不透明度
         MAX_CURSOR_SIZE: 96, // 鼠标指针图片最大宽度/高度
