@@ -5079,6 +5079,8 @@
   --toolbarButton-presentationMode-icon:url(images/toolbarButton-presentationMode.svg);
   --toolbarButton-print-icon:url(images/toolbarButton-print.svg);
   --toolbarButton-commens-icon:url(images/toolbarButton-comments.svg);
+  --toolbarButton-export-icon:url(images/toolbarButton-export.svg);
+  --toolbarButton-save-icon:url(images/toolbarButton-save.svg);
   --toolbarButton-openFile-icon:url(images/toolbarButton-openFile.svg);
   --toolbarButton-download-icon:url(images/toolbarButton-download.svg);
   --toolbarButton-bookmark-icon:url(images/toolbarButton-bookmark.svg);
@@ -6882,4 +6884,14 @@ dialog :link{
 #annotationToggleButton::before {
   -webkit-mask-image: var(--toolbarButton-commens-icon);
   mask-image: var(--toolbarButton-commens-icon);
+}
+
+#exportButton::before {
+  -webkit-mask-image: var(--toolbarButton-export-icon);
+  mask-image: var(--toolbarButton-export-icon);
+}
+
+#saveButton::before {
+  -webkit-mask-image: var(--toolbarButton-save-icon);
+  mask-image: var(--toolbarButton-save-icon);
 }

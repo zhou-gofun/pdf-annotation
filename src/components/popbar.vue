@@ -145,8 +145,8 @@ defineExpose({
             display: flex;
             justify-content: center;
             align-items: center;
-            width: 40px; // ✅ 固定宽度（可按实际图标宽度调整）
-            height: 32px;
+            width: 34px; // ✅ 固定宽度（可按实际图标宽度调整）
+            height: 26px;
             padding: 0;
             border: 1px solid transparent;
             color: var(--main-color);
@@ -155,7 +155,7 @@ defineExpose({
             transition: background-color 0.2s ease;
 
             .icon {
-                font-size: 22px;
+                font-size: 18px;
                 line-height: 1;
                 display: flex;
                 justify-content: center;

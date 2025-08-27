@@ -16,7 +16,7 @@ const SelectSvg = () => h('svg', {
   })
 ])
 
-const HighlightSvg = () => h('svg', {
+const HighlightSvg = (color: any) => h('svg', {
   viewBox: '0 0 24 24',
   height: '1em',
   fill: 'currentColor'
@@ -27,6 +27,7 @@ const HighlightSvg = () => h('svg', {
     h('title', {}, 'icon - line - tool - highlight'),
     h('path', {
     class: 'cls-1',
+    fill: color,
     d: 'M9.91,13.07h3.86L11.84,8.46Zm5.46,3.68L14.62,15H9.05L7.77,18H5.63L10.45,6.64a1,1,0,0,1,1-.64h1a1.23,1.23,0,0,1,1,.64l2,4.91V4H5.85A2.22,2.22,0,0,0,3.63,6.22V17.78A2.22,2.22,0,0,0,5.85,20h9.52Z'
   }),
     h('path', {
@@ -42,7 +43,7 @@ const StrikeoutSvg = () => h('svg', {
   fill: 'currentColor'
 }, [
   h('defs', {}, [
-    h('style', {}, '.cls-1{fill:#abb0c4;}')
+    h('style', {}, '.cls-1{fill:currentColor;}')
   ]),
   h('title', {}, 'icon - tool - text manipulation - strikethrough'),
   h('rect', {
@@ -65,7 +66,7 @@ const UnderlineSvg = () => h('svg', {
   fill: 'currentColor'
 }, [
   h('defs', {}, [
-    h('style', {}, '.cls-1{fill:#abb0c4;}')
+    h('style', {}, '.cls-1{fill:currentColor;}')
   ]),
   h('title', {}, 'icon - tool - text manipulation - underline'),
   h('path', {
@@ -88,7 +89,7 @@ const SquigglySvg = () => h('svg', {
   fill: 'currentColor'
 }, [
   h('defs', {}, [
-    h('style', {}, '.cls-1{fill:#abb0c4;}')
+    h('style', {}, '.cls-1{fill:currentColor;}')
   ]),
   h('title', {}, 'icon - tool - text manipulation - squiggly'),
   h('path', {
@@ -136,25 +137,39 @@ const EllipseSvg = () => h('svg', {
 ])
 
 const FreehandSvg = () => h('svg', {
+  width: '1em',
   height: '1em',
-  fill: 'currentColor',
-  viewBox: '0 0 512 512'
+  viewBox: '0 0 24 24',
+  fill: 'currentColor'
 }, [
   h('path', {
-    fill: 'currentColor',
-    d: 'M410.3 231l11.3-11.3-33.9-33.9-62.1-62.1L291.7 89.8l-11.3 11.3-22.6 22.6L58.6 322.9c-10.4 10.4-18 23.3-22.2 37.4L1 480.7c-2.5 8.4-.2 17.5 6.1 23.7s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4.2 27-11.8 37.4-22.2L387.7 253.7 410.3 231zM160 399.4l-9.1 22.7c-4 3.1-8.5 5.4-13.3 6.9L59.4 452l23-78.1c1.4-4.9 3.8-9.4 6.9-13.3l22.7-9.1v32c0 8.8 7.2 16 16 16h32zM362.7 18.7L348.3 33.2 325.7 55.8 314.3 67.1l33.9 33.9 62.1 62.1 33.9 33.9 11.3-11.3 22.6-22.6 14.5-14.5c25-25 25-65.5 0-90.5L453.3 18.7c-25-25-65.5-25-90.5 0zm-47.4 168l-144 144c-6.2 6.2-16.4 6.2-22.6 0s-6.2-16.4 0-22.6l144-144c6.2-6.2 16.4-6.2 22.6 0s6.2 16.4 0 22.6z'
-  })
+  fill: 'currentColor',
+  d: 'M9.75 20.85c1.78-.7 1.39-2.63.49-3.85c-.89-1.25-2.12-2.11-3.36-2.94A9.8 9.8 0 0 1 4.54 12c-.28-.33-.85-.94-.27-1.06c.59-.12 1.61.46 2.13.68c.91.38 1.81.82 2.65 1.34l1.01-1.7C8.5 10.23 6.5 9.32 4.64 9.05c-1.06-.16-2.18.06-2.54 1.21c-.32.99.19 1.99.77 2.77c1.37 1.83 3.5 2.71 5.09 4.29c.34.33.75.72.95 1.18c.21.44.16.47-.31.47c-1.24 0-2.79-.97-3.8-1.61l-1.01 1.7c1.53.94 4.09 2.41 5.96 1.79m11.09-15.6c.22-.22.22-.58 0-.79l-1.3-1.3a.56.56 0 0 0-.78 0l-1.02 1.02l2.08 2.08M11 10.92V13h2.08l6.15-6.15l-2.08-2.08z'
+})
 ])
 
 const FreeHighlightSvg = () => h('svg', {
+  width: '1em',
   height: '1em',
-  fill: 'currentColor',
-  viewBox: '0 0 576 512'
+  viewBox: '0 0 24 24',
+  fill: 'currentColor'
 }, [
   h('path', {
-    fill: 'currentColor',
-    d: 'M315 315l158.4-215L444.1 70.6 229 229 315 315zm-187 5l0 0V248.3c0-15.3 7.2-29.6 19.5-38.6L420.6 8.4C428 2.9 437 0 446.2 0c11.4 0 22.4 4.5 30.5 12.6l54.8 54.8c8.1 8.1 12.6 19 12.6 30.5c0 9.2-2.9 18.2-8.4 25.6L334.4 396.5c-9 12.3-23.4 19.5-38.6 19.5H224l-25.4 25.4c-12.5 12.5-32.8 12.5-45.3 0l-50.7-50.7c-12.5-12.5-12.5-32.8 0-45.3L128 320zM7 466.3l63-63 70.6 70.6-31 31c-4.5 4.5-10.6 7-17 7H24c-13.3 0-24-10.7-24-24v-4.7c0-6.4 2.5-12.5 7-17z'
-  })
+  fill: 'currentColor',
+  d: 'M18.62 1.5c-.51 0-1.02.19-1.41.59l-6.46 6.46l4.2 4.19l6.46-6.45c.79-.79.79-2.05 0-2.83l-1.37-1.37c-.39-.4-.9-.59-1.42-.59m-8.82 8l-6.57 6.57l.7.7c-.53.47-1.04 1.01-1.55 1.52c-.78.79-.78 2.05 0 2.83s2.04.78 2.83 0c.51-.49 1.04-1.04 1.52-1.54l.7.69L14 13.7'
+})
+])
+
+const EraserSvg = () => h('svg', {
+  width: '1em',
+  height: '1em',
+  viewBox: '0 0 24 24',
+  fill: 'currentColor'
+}, [
+  h('path', {
+  fill: 'currentColor',
+  d: 'M12.48 3L7.73 7.75L3 12.59a2 2 0 0 0 0 2.82l4.3 4.3A1 1 0 0 0 8 20h12v-2h-7l7.22-7.22a2 2 0 0 0 0-2.83L15.31 3a2 2 0 0 0-2.83 0M8.41 18l-4-4l4.75-4.84l.74-.75l4.95 4.95l-4.56 4.56l-.07.08z'
+})
 ])
 
 const SignatureSvg = () => h('svg', {
@@ -306,9 +321,133 @@ const DeleteSvg = () => h('svg', {
   })
 ])
 
+// 可着色图标生成函数
+export const createColorableIcon = (annotationType: number) => (color: string) => {
+  switch(annotationType) {
+    case 1: // Annotation.HIGHLIGHT
+      return h('svg', {
+        viewBox: '0 0 24 24',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: color, // 着色区域：第一个path
+          d: 'M9.91,13.07h3.86L11.84,8.46Zm5.46,3.68L14.62,15H9.05L7.77,18H5.63L10.45,6.64a1,1,0,0,1,1-.64h1a1.23,1.23,0,0,1,1,.64l2,4.91V4H5.85A2.22,2.22,0,0,0,3.63,6.22V17.78A2.22,2.22,0,0,0,5.85,20h9.52Z'
+        }),
+        h('path', {
+          fill: 'currentColor', // 保持默认颜色
+          d: 'M20.37,2V22h-2V2Z'
+        })
+      ])
+    
+    case 2: // Annotation.STRIKEOUT
+      return h('svg', {
+        viewBox: '0 0 24 24',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('rect', {
+          fill: color, // 着色区域：rect删除线
+          x: '3.13',
+          y: '11.31',
+          width: '17.74',
+          height: '2.5'
+        }),
+        h('path', {
+          fill: 'currentColor', // 保持默认颜色
+          d: 'M12,5l2.4,5.77h2.68l-3.28-8A1.49,1.49,0,0,0,12.64,2H11.49a1.24,1.24,0,0,0-1.16.77L7,10.73H9.59Zm3.25,8.62,2,4.74h2.57l-2-4.74ZM4.17,18.32H6.74l2-4.74H6.18Z'
+        })
+      ])
+    
+    case 3: // Annotation.UNDERLINE
+      return h('svg', {
+        viewBox: '0 0 24 24',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: 'currentColor', // 保持默认颜色，显示字母A
+          d: 'M8.53,13.2h6.94l1.6,3.74h2.66L13.87,2.8a1.54,1.54,0,0,0-1.2-.8h-1.2a1.27,1.27,0,0,0-1.2.8l-6,14.14H6.93ZM12,5.07l2.4,5.73H9.6Z'
+        }),
+        h('rect', {
+          fill: color, // 着色区域：rect下划线
+          x: '2.8',
+          y: '20.29',
+          width: '18.4',
+          height: '2.5'
+        })
+      ])
+    
+    case 4: // Annotation.SQUIGGLY
+      return h('svg', {
+        viewBox: '0 0 24 24',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: 'currentColor', // 保持默认颜色，显示字母A
+          d: 'M8.79,12.77h6.67L17,16.36h2.56L13.92,2.64A1.34,1.34,0,0,0,12.77,2H11.62a1.24,1.24,0,0,0-1.16.77L4.69,16.36H7.26Zm3.34-7.95,2.31,5.51H9.82Z'
+        }),
+        h('path', {
+          fill: color, // 着色区域：波浪线
+          d: 'M21,20V22a3,3,0,0,1-2.56-1.41c-.38-.51-.64-.64-1-.64s-.51.13-1,.64A3.34,3.34,0,0,1,13.79,22a3,3,0,0,1-2.56-1.41c-.38-.51-.64-.64-1-.64s-.52.13-1,.64A3.34,3.34,0,0,1,6.62,22a3,3,0,0,1-2.57-1.41c-.38-.51-.64-.64-1-.64V17.9a3,3,0,0,1,2.56,1.41c.38.51.64.64,1,.64s.51-.13,1-.64a3.32,3.32,0,0,1,2.57-1.41,3,3,0,0,1,2.56,1.41c.38.51.64.64,1,.64s.52-.13,1-.64a3.31,3.31,0,0,1,2.56-1.41A3,3,0,0,1,20,19.31C20.33,19.82,20.59,20,21,20Z'
+        })
+      ])
+    
+    case 12: // Annotation.NOTE
+      return h('svg', {
+        width: '1em',
+        height: '1em',
+        viewBox: '0 0 32 32',
+        fill: 'currentColor'
+      }, [
+        h('path', {
+          fill: color || 'currentColor',
+          d: 'M9,22A1,1 0 0,1 8,21V18H4A2,2 0 0,1 2,16V4C2,2.89 2.9,2 4,2H20A2,2 0 0,1 22,4V16A2,2 0 0,1 20,18H13.9L10.2,21.71C10,21.9 9.75,22 9.5,22V22H9M10,16V19.08L13.08,16H20V4H4V16H10'
+        }),
+        h('path', {
+          fill: 'currentColor',
+          d: 'M6,7H18V9H6V7M6,11H15V13H6V11Z'
+        })
+      ])
+    
+    case 8: // Annotation.FREEHAND
+      return h('svg', {
+        xmlns: 'http://www.w3.org/2000/svg',
+        width: '1em',
+        height: '1em',
+        viewBox: '0 0 24 24'
+      }, [
+        h('path', {
+          fill: 'currentColor',
+          d: 'M20.84 5.25c.22-.22.22-.58 0-.79l-1.3-1.3a.56.56 0 0 0-.78 0l-1.02 1.02l2.08 2.08zM11 10.92V13h2.08l6.15-6.15l-2.08-2.08z'
+        }),
+        h('path', {
+          fill: color,
+          d: 'M9.75 20.85c1.78-.7 1.39-2.63.49-3.85c-.89-1.25-2.12-2.11-3.36-2.94A9.8 9.8 0 0 1 4.54 12c-.28-.33-.85-.94-.27-1.06c.59-.12 1.61.46 2.13.68c.91.38 1.81.82 2.65 1.34l1.01-1.7C8.5 10.23 6.5 9.32 4.64 9.05c-1.06-.16-2.18.06-2.54 1.21c-.32.99.19 1.99.77 2.77c1.37 1.83 3.5 2.71 5.09 4.29c.34.33.75.72.95 1.18c.21.44.16.47-.31.47c-1.24 0-2.79-.97-3.8-1.61l-1.01 1.7c1.53.94 4.09 2.41 5.96 1.79'
+        })
+      ])
+    
+    case 9: // Annotation.FREE_HIGHLIGHT
+      return h('svg', {
+        viewBox: '0 0 24 24',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: 'currentColor', // 笔尾颜色
+          d: 'M18.62 1.5c-.51 0-1.02.19-1.41.59l-6.46 6.46l4.2 4.19l6.46-6.45c.79-.79.79-2.05 0-2.83l-1.37-1.37c-.39-.4-.9-.59-1.42-.59'
+        }),
+        h('path', {
+          fill: color, // 笔头颜色
+          d: 'M9.8 9.5l-6.57 6.57l.7.7c-.53.47-1.04 1.01-1.55 1.52c-.78.79-.78 2.05 0 2.83s2.04.78 2.83 0c.51-.49 1.04-1.04 1.52-1.54l.7.69L14 13.7z'
+        })
+      ])
+    
+    default:
+      return h('div', { style: { color: color, fontSize: '14px' } }, '●')
+  }
+}
+
 // 导出图标组件
 export const SelectIcon = createIcon(SelectSvg)
-export const HighlightIcon = createIcon(HighlightSvg)
+// 修复类型错误:将HighlightSvg包装为不需要参数的函数
+export const HighlightIcon = createIcon(() => HighlightSvg('#000000'))
 export const StrikeoutIcon = createIcon(StrikeoutSvg)
 export const UnderlineIcon = createIcon(UnderlineSvg)
 export const SquigglyIcon = createIcon(SquigglySvg)
@@ -317,6 +456,7 @@ export const RectangleIcon = createIcon(RectangleSvg)
 export const CircleIcon = createIcon(EllipseSvg)
 export const FreehandIcon = createIcon(FreehandSvg)
 export const FreeHighlightIcon = createIcon(FreeHighlightSvg)
+export const EraserIcon = createIcon(EraserSvg)
 export const SignatureIcon = createIcon(SignatureSvg)
 export const StampIcon = createIcon(StampSvg)
 export const PaletteIcon = createIcon(PaletteSvg)

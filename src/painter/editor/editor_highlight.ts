@@ -17,8 +17,8 @@ export class EditorHighLight extends Editor {
     // constructor(EditorOptions: IEditorOptions, editorType: AnnotationType) {
     //     super({ ...EditorOptions, editorType })
     // }
-    constructor(EditorOptions: IEditorOptions, _editorType: number) {
-        super({ ...EditorOptions, editorType: Annotation.HIGHLIGHT })
+    constructor(EditorOptions: IEditorOptions, editorType: number) {
+        super({ ...EditorOptions, editorType })
     }
 
     /**
@@ -161,9 +161,48 @@ export class EditorHighLight extends Editor {
                 return this.createUnderlineShape(x, y, width, height)
             case Annotation.STRIKEOUT:
                 return this.createStrikeoutShape(x, y, width, height)
+            case Annotation.SQUIGGLY:
+                return this.createSquigglyShape(x, y, width, height)
             default:
                 throw new Error(`Unsupported annotation type: ${this.currentAnnotation?.type}`)
         }
+    }
+
+    /**
+     * 创建波浪线形状。
+     * @param x 形状的 X 坐标
+     * @param y 形状的 Y 坐标
+     * @param width 形状的宽度
+     * @param height 形状的高度
+     * @returns Konva.Line 波浪线形状对象
+     */
+    private createSquigglyShape(x: number, y: number, width: number, height: number): Konva.Line {
+        // 创建波浪线路径
+        const points: number[] = []
+        
+        // 使用strokeWidth来调节波浪幅度，如果没有设置strokeWidth则使用默认值
+        const strokeWidth = this.currentAnnotation?.style?.strokeWidth || 1
+        const amplitude = (height * 0.2) * strokeWidth // 波浪幅度根据strokeWidth调整
+        const frequency = 4 // 波浪频率，在给定宽度内的波浪数量
+        const baseY = y + height + 1 // 基准Y坐标，放在文本下方
+        
+        // 生成波浪线的点
+        const steps = Math.max(width / 2, 20) // 确保有足够的点来形成平滑的波浪
+        for (let i = 0; i <= steps; i++) {
+            const currentX = x + (width * i) / steps
+            const waveY = baseY + Math.sin((i / steps) * frequency * Math.PI * 2) * amplitude
+            points.push(currentX, waveY)
+        }
+        
+        return new Konva.Line({
+            points,
+            stroke: this.currentAnnotation?.style?.color,
+            strokeWidth: Math.max(strokeWidth * 0.5, 0.3), // 线条宽度也根据strokeWidth调整
+            hitStrokeWidth: 8,
+            lineCap: 'round',
+            lineJoin: 'round',
+            opacity: 1
+        })
     }
 
     /**
@@ -280,6 +319,19 @@ export class EditorHighLight extends Editor {
                 }
                 if (annotationStore.type === Annotation.STRIKEOUT) {
                     if (shape instanceof Konva.Rect) {
+                        if (styles.color !== undefined) {
+                            shape.stroke(styles.color)
+                        }
+                        if (styles.strokeWidth !== undefined) {
+                            shape.strokeWidth(styles.strokeWidth)
+                        }
+                        if (styles.opacity !== undefined) {
+                            shape.opacity(styles.opacity)
+                        }
+                    }
+                }
+                if (annotationStore.type === Annotation.SQUIGGLY) {
+                    if (shape instanceof Konva.Line) {
                         if (styles.color !== undefined) {
                             shape.stroke(styles.color)
                         }

@@ -14,9 +14,12 @@
             @click="onAnnotationClick(annotation)"
           >
             <div class="icon">
-              <!-- 如果是选中的工具且有颜色，使用着色图标，否则使用原始图标 -->
-              <template v-if="annotation.type === selectedType && annotation.style?.color">
-                <ColorableIcon :color="annotation.style.color" :annotationType="annotation.type" />
+              <!-- 如果是选中的工具，使用当前选中颜色的着色图标，否则使用原始图标 -->
+              <template v-if="annotation.type === selectedType">
+                <ColorableIcon 
+                  :color="getCurrentToolColor(annotation)" 
+                  :annotationType="annotation.type" 
+                />
               </template>
               <template v-else>
                 <component :is="annotation.icon" />
@@ -44,7 +47,7 @@
                 <ColorableIcon :color="color" :annotationType="currentAnnotation.type" />
               </div>
               
-              <!-- 下拉箭头按钮 -->
+              <!-- 下拉箭头按钮 - 只在选中当前颜色时显示，否则隐藏但占位 -->
               <Popover trigger="click" placement="bottomLeft" :arrow="false">
                 <template #content>
                   <div class="color-picker-panel">
@@ -77,10 +80,24 @@
                         />
                         <span>{{ opacity }}%</span>
                       </div>
+                      <div v-if="currentAnnotation && currentAnnotation.styleEditable?.strokeWidth" class="stroke-width-section">
+                        <span>浪宽</span>
+                        <Slider
+                          v-model:value="strokeWidth"
+                          :min="1"
+                          :max="5"
+                          :step="0.5"
+                          @change="(value: number | [number, number]) => handleStrokeWidthChange(Array.isArray(value) ? value[0] : value)"
+                        />
+                        <span>{{ strokeWidth }}</span>
+                      </div>
                     </div>
                   </div>
                 </template>
-                <div class="color-dropdown-trigger">
+                <div 
+                  class="color-dropdown-trigger"
+                  :class="{ invisible: currentAnnotation?.style?.color !== color }"
+                >
                   <div class="dropdown-arrow">▼</div>
                 </div>
               </Popover>
@@ -105,7 +122,9 @@
             <div class="icon">↷</div>
           </div>
           <div class="tool-item eraser" :title="t('normal.eraser')" @click="handleEraser">
-            <div class="icon">🗑</div>
+            <div class="icon">
+              <EraserIcon />
+            </div>
           </div>
         </div>
       </div>
@@ -186,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineExpose, h } from 'vue'
+import { ref, computed, watch, defineExpose } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   message,
@@ -203,7 +222,9 @@ import {
 } from '../../const/definitions'
 import { 
   // ExportIcon, 
-  PaletteIcon, 
+  PaletteIcon,
+  EraserIcon,
+  createColorableIcon,
   // SaveIcon, 
   // HighlightIcon,
   // UnderlineIcon,
@@ -234,87 +255,20 @@ const { t } = useI18n()
 
 // 创建可着色的图标组件
 const ColorableIcon = ({ color, annotationType }: { color: string, annotationType: number }) => {
-  // 根据不同的工具类型，创建带颜色的图标
-  switch(annotationType) {
-    case Annotation.HIGHLIGHT:
-      // 第一个path着色，第二个path保持默认颜色
-      return h('svg', {
-        viewBox: '0 0 24 24',
-        style: { height: '14px', width: '14px' }
-      }, [
-        h('path', {
-          fill: color, // 着色区域：第一个path
-          d: 'M9.91,13.07h3.86L11.84,8.46Zm5.46,3.68L14.62,15H9.05L7.77,18H5.63L10.45,6.64a1,1,0,0,1,1-.64h1a1.23,1.23,0,0,1,1,.64l2,4.91V4H5.85A2.22,2.22,0,0,0,3.63,6.22V17.78A2.22,2.22,0,0,0,5.85,20h9.52Z'
-        }),
-        h('path', {
-          fill: 'currentColor', // 保持默认颜色
-          d: 'M20.37,2V22h-2V2Z'
-        })
-      ])
-    
-    case Annotation.STRIKEOUT:
-      // rect着色，path保持默认颜色
-      return h('svg', {
-        viewBox: '0 0 24 24',
-        style: { height: '14px', width: '14px' }
-      }, [
-        h('rect', {
-          fill: color, // 着色区域：rect删除线
-          x: '3.13',
-          y: '11.31',
-          width: '17.74',
-          height: '2.5' // 增加线宽，从1.7增加到2.5
-        }),
-        h('path', {
-          fill: 'currentColor', // 保持默认颜色
-          d: 'M12,5l2.4,5.77h2.68l-3.28-8A1.49,1.49,0,0,0,12.64,2H11.49a1.24,1.24,0,0,0-1.16.77L7,10.73H9.59Zm3.25,8.62,2,4.74h2.57l-2-4.74ZM4.17,18.32H6.74l2-4.74H6.18Z'
-        })
-      ])
-    
-    case Annotation.UNDERLINE:
-      // rect着色，path保持默认颜色，显示字母A
-      return h('svg', {
-        viewBox: '0 0 24 24',
-        style: { height: '14px', width: '14px' }
-      }, [
-        h('path', {
-          fill: 'currentColor', // 保持默认颜色，显示字母A
-          d: 'M8.53,13.2h6.94l1.6,3.74h2.66L13.87,2.8a1.54,1.54,0,0,0-1.2-.8h-1.2a1.27,1.27,0,0,0-1.2.8l-6,14.14H6.93ZM12,5.07l2.4,5.73H9.6Z'
-        }),
-        h('rect', {
-          fill: color, // 着色区域：rect下划线
-          x: '2.8',
-          y: '20.29',
-          width: '18.4',
-          height: '2.5' // 增加线宽，从1.7增加到2.5
-        })
-      ])
-    
-    case Annotation.FREE_HIGHLIGHT:
-      // 波浪线path着色
-      return h('svg', {
-        viewBox: '0 0 24 24',
-        style: { height: '14px', width: '14px' }
-      }, [
-        h('path', {
-          fill: color, // 着色区域：波浪线
-          d: 'M21,20V22a3,3,0,0,1-2.56-1.41c-.38-.51-.64-.64-1-.64s-.51.13-1,.64A3.34,3.34,0,0,1,13.79,22a3,3,0,0,1-2.56-1.41c-.38-.51-.64-.64-1-.64s-.52.13-1,.64A3.34,3.34,0,0,1,6.62,22a3,3,0,0,1-2.57-1.41c-.38-.51-.64-.64-1-.64V17.9a3,3,0,0,1,2.56,1.41c.38.51.64.64,1,.64s.51-.13,1-.64a3.32,3.32,0,0,1,2.57-1.41,3,3,0,0,1,2.56,1.41c.38.51.64.64,1,.64s.52-.13,1-.64a3.31,3.31,0,0,1,2.56-1.41A3,3,0,0,1,20,19.31C20.33,19.82,20.59,20,21,20Z'
-        }),
-        h('path', {
-          fill: 'currentColor', // 保持默认颜色
-          d: 'M8.79,12.77h6.67L17,16.36h2.56L13.92,2.64A1.34,1.34,0,0,0,12.77,2H11.62a1.24,1.24,0,0,0-1.16.77L4.69,16.36H7.26Zm3.34-7.95,2.31,5.51H9.82Z'
-        })
-      ])
-    
-    default:
-      return h('div', { style: { color: color, fontSize: '14px' } }, '●')
-  }
+  return createColorableIcon(annotationType)(color)
 }
 
 // 状态
 // const colorPickerOpen = ref(false)
 const opacity = ref(100)
+const strokeWidth = ref(1)
 const colorInput = ref<HTMLInputElement | null>(null)
+
+// 获取当前工具的选中颜色
+const getCurrentToolColor = (annotation: IAnnotationType): string => {
+  // 如果有记录的选中颜色，使用记录的颜色，否则使用第一个颜色
+  return toolSelectedColors.value[annotation.type] || getToolColors(annotation)[0]
+}
 
 // 为每个工具配置独特的四种颜色
 const getToolColors = (annotation: IAnnotationType): string[] => {
@@ -324,12 +278,13 @@ const getToolColors = (annotation: IAnnotationType): string[] => {
   }
   
   const colorMap: Record<number, string[]> = {
-    [Annotation.HIGHLIGHT]: ['#ffff00', '#00ff00', '#ff0000', '#0000ff'],
-    [Annotation.UNDERLINE]: ['#ff0000', '#0000ff', '#008000', '#ff8c00'],
+    [Annotation.HIGHLIGHT]: ['#ff8c00', '#00ff00', '#ff0000', '#0000ff'],
+    [Annotation.UNDERLINE]: ['#008000', '#0000ff', '#ff0000', '#ff8c00'],
     [Annotation.STRIKEOUT]: ['#ff0000', '#000000', '#696969', '#8b0000'],
-    [Annotation.FREE_HIGHLIGHT]: ['#ff69b4', '#00ced1', '#9370db', '#32cd32'],
+    [Annotation.SQUIGGLY]: ['#ff69b4', '#00ced1', '#9370db', '#32cd32'],
     [Annotation.NOTE]: ['#ffd700', '#ff6347', '#4169e1', '#32cd32'],
-    [Annotation.FREEHAND]: ['#000000', '#ff0000', '#0000ff', '#008000']
+    [Annotation.FREEHAND]: ['#000000', '#ff0000', '#0000ff', '#008000'],
+    [Annotation.FREE_HIGHLIGHT]: ['#ff1493', '#00bfff', '#9932cc', '#adff2f']
   }
   
   const defaultColors = colorMap[annotation.type] || ['#ff0000', '#00ff00', '#0000ff', '#ffff00']
@@ -340,12 +295,17 @@ const getToolColors = (annotation: IAnnotationType): string[] => {
 // 存储每个工具的颜色配置
 const toolColorsStore = ref<Record<number, string[]>>({})
 
+// 存储每个工具当前选中的颜色
+const toolSelectedColors = ref<Record<number, string>>({})
+
 // 初始化工具颜色存储
 const initializeToolColors = () => {
   Object.values(Annotation).forEach((annotationType) => {
     if (typeof annotationType === 'number') {
       const defaultColors = getToolColors({ type: annotationType } as IAnnotationType)
       toolColorsStore.value[annotationType] = [...defaultColors]
+      // 初始化每个工具的选中颜色为第一个颜色
+      toolSelectedColors.value[annotationType] = defaultColors[0]
     }
   })
 }
@@ -359,7 +319,7 @@ const annotateTools = computed<IAnnotationType[]>(() => {
     Annotation.HIGHLIGHT,
     Annotation.UNDERLINE, 
     Annotation.STRIKEOUT,
-    Annotation.FREE_HIGHLIGHT, // Squiggly
+    Annotation.SQUIGGLY, // 波浪线
     Annotation.NOTE,
     Annotation.FREEHAND,
     Annotation.FREE_HIGHLIGHT
@@ -376,7 +336,7 @@ const categoryToAnnotations = {
     Annotation.HIGHLIGHT,
     Annotation.UNDERLINE,
     Annotation.STRIKEOUT,
-    Annotation.FREE_HIGHLIGHT,
+    Annotation.SQUIGGLY,
     Annotation.NOTE,
     Annotation.FREEHAND,
     Annotation.FREE_HIGHLIGHT
@@ -442,8 +402,14 @@ watch(() => props.selectedCategory, () => {
 function onAnnotationClick(annotation: IAnnotationType | null) {
   if (annotation?.type === selectedType.value) {
     currentAnnotation.value = null
-  } else {
-    currentAnnotation.value = annotation
+  } else if (annotation) {
+    // 使用记录的颜色设置工具状态
+    const selectedColor = toolSelectedColors.value[annotation.type]
+    const annotationWithColor = {
+      ...annotation,
+      style: { ...annotation.style, color: selectedColor }
+    }
+    currentAnnotation.value = annotationWithColor
   }
   if (annotation?.type !== Annotation.SIGNATURE) {
     dataTransfer.value = null
@@ -458,13 +424,21 @@ function handleAdd(signatureDataUrl: string, annotation: IAnnotationType) {
 
 function handleColorChange(color: string) {
   if (!currentAnnotation.value) return
+  
+  // 记录该工具的选中颜色
+  toolSelectedColors.value[currentAnnotation.value.type] = color
+  
+  // 更新当前工具的颜色状态
   const updatedAnnotation: IAnnotationType = {
     ...currentAnnotation.value,
     style: { ...currentAnnotation.value.style, color }
   }
+  
+  // 更新annotations数组中对应的工具
   annotations.value = annotations.value.map(a =>
     a.type === currentAnnotation.value?.type ? updatedAnnotation : a
   )
+  
   currentAnnotation.value = updatedAnnotation
 }
 
@@ -509,12 +483,33 @@ function handleRedo() {
 }
 
 function handleEraser() {
-  props.onEraser?.()
+  // 找到橡皮擦工具并选择它
+  const eraserTool = annotationDefinitions.find(tool => tool.type === Annotation.ERASER)
+  if (eraserTool) {
+    onAnnotationClick(eraserTool)
+  }
 }
 
 function handleOpacityChange(value: number) {
   opacity.value = value
   // TODO: 应用透明度变化
+}
+
+function handleStrokeWidthChange(value: number) {
+  strokeWidth.value = value
+  if (currentAnnotation.value) {
+    const updatedAnnotation: IAnnotationType = {
+      ...currentAnnotation.value,
+      style: { ...currentAnnotation.value.style, strokeWidth: value }
+    }
+    
+    // 更新annotations数组中对应的工具
+    annotations.value = annotations.value.map(a =>
+      a.type === currentAnnotation.value?.type ? updatedAnnotation : a
+    )
+    
+    currentAnnotation.value = updatedAnnotation
+  }
 }
 function updateStyle(annotationType: AnnotationType, style: IAnnotationStyle) {
   annotations.value = annotations.value.map(annotation => {
@@ -702,7 +697,12 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
       justify-content: center;
       flex-shrink: 0;
       
-      &:hover {
+      &.invisible {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      &:hover:not(.invisible) {
         background: #f6f8fa;
         border-color: #1976d2;
       }
@@ -819,6 +819,27 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
       align-items: center;
       gap: 8px;
       font-size: 12px;
+      
+      span {
+        color: #666;
+        min-width: 45px;
+        
+        &:last-child {
+          min-width: 30px;
+        }
+      }
+      
+      .ant-slider {
+        flex: 1;
+      }
+    }
+    
+    .stroke-width-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      margin-top: 8px;
       
       span {
         color: #666;
