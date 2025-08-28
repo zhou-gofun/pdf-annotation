@@ -6,10 +6,8 @@ import { annotationDefinitions, type IAnnotationStore, type IAnnotationStyle } f
 import type { IRect } from 'konva/lib/types'
 import { AnnoIcon, DeleteIcon, PaletteIcon } from '../../const/icon'
 import { defaultOptions } from '../../const/default_options'
-import { isSameColor } from '../../utils/utils'
-import { useI18n } from 'vue-i18n'
 import { PAINTER_WRAPPER_PREFIX } from '../../painter/const'
-import { Divider, Form, Slider } from 'ant-design-vue'
+import ColorPanel from '../common/ColorPanel.vue'
 
 // ---------------- props ----------------
 interface Props {
@@ -29,7 +27,9 @@ const currentColor = ref<string | null>(defaultOptions.setting.COLOR)
 const strokeWidth = ref<number>(defaultOptions.setting.STROKE_WIDTH)
 const opacity = ref<number>(defaultOptions.setting.OPACITY)
 
-const { t } = useI18n()
+// 自定义颜色管理
+const customColors = ref<string[]>([])
+
 
 // ---------------- expose ----------------
 interface CustomAnnotationMenuRef {
@@ -113,51 +113,45 @@ function handleAnnotationStyleChange(style: IAnnotationStyle) {
   if (!currentAnnotation.value) return
   props.onChangeStyle(currentAnnotation.value, style)
 }
+
+// 颜色相关方法
+function handleColorChange(color: string) {
+  currentColor.value = color
+  // 实时更新注释样式
+  handleAnnotationStyleChange({ color })
+}
+
+function handleOpacityChange(opacityVal: number) {
+  opacity.value = opacityVal
+  // 实时更新注释样式
+  handleAnnotationStyleChange({ opacity: opacityVal / 100 })
+}
+
+function handleStrokeWidthChange(strokeVal: number) {
+  strokeWidth.value = strokeVal
+  // 实时更新注释样式
+  handleAnnotationStyleChange({ strokeWidth: strokeVal })
+}
+
+function handleCustomColorAdd(color: string) {
+  // 添加到自定义颜色列表
+  if (!customColors.value.includes(color)) {
+    customColors.value.push(color)
+  }
+}
+
+function handleCustomColorDelete(color: string) {
+  // 从自定义颜色列表中删除
+  const index = customColors.value.indexOf(color)
+  if (index > -1) {
+    customColors.value.splice(index, 1)
+  }
+}
+
 </script>
 
 <template>
   <div class="CustomAnnotationMenu" :class="{ show: show, hide: !show }" ref="containerRef">
-    <!-- 样式面板 -->
-    <div v-if="showStyle && currentAnnotation" class="styleContainer">
-      <!-- 颜色 -->
-      <div v-if="isStyleSupported?.color" class="colorPalette">
-        <div
-          v-for="color in defaultOptions.colors"
-          :key="color"
-          class="cell"
-          :class="{ active: isSameColor(color, currentColor || '') }"
-          @mousedown.prevent="() => { handleAnnotationStyleChange({ color }); currentColor = color }"
-        >
-          <span :style="{ backgroundColor: color }"></span>
-        </div>
-      </div>
-
-      <!-- strokeWidth & opacity -->
-      <template v-if="isStyleSupported?.strokeWidth || isStyleSupported?.opacity">
-        <Divider size="small" />
-        <div class="prototypeSetting">
-          <Form layout="vertical">
-            <Form.Item v-if="isStyleSupported?.strokeWidth" :label="`${t('normal.strokeWidth')} (${strokeWidth})`">
-              <Slider
-                v-model:value="strokeWidth"
-                :min="1"
-                :max="20"
-                @change="value => handleAnnotationStyleChange({ strokeWidth: Number(value) })"
-              />
-            </Form.Item>
-            <Form.Item v-if="isStyleSupported?.opacity" :label="`${t('normal.opacity')} (${opacity}%)`">
-              <Slider
-                v-model:value="opacity"
-                :min="0"
-                :max="100"
-                @change="value => handleAnnotationStyleChange({ opacity: Number(value) / 100 })"
-              />
-            </Form.Item>
-          </Form>
-        </div>
-      </template>
-    </div>
-
     <!-- 按钮面板 -->
     <ul v-if="!showStyle && currentAnnotation" class="buttons">
       <li @mousedown.prevent="() => { props.onOpenComment(currentAnnotation as IAnnotationStore); close() }">
@@ -172,6 +166,27 @@ function handleAnnotationStyleChange(style: IAnnotationStyle) {
         <div class="icon"><DeleteIcon /></div>
       </li>
     </ul>
+    
+    <!-- 直接显示的调色板 -->
+    <div v-if="showStyle && currentAnnotation" class="color-panel-container">
+      <ColorPanel
+        :selected-color="currentColor || '#000000'"
+        :opacity="opacity"
+        :stroke-width="strokeWidth"
+        :show-opacity="!!isStyleSupported?.opacity"
+        :show-stroke-width="!!isStyleSupported?.strokeWidth"
+        :stroke-width-label="'线宽'"
+        :stroke-width-min="1"
+        :stroke-width-max="20"
+        :stroke-width-step="1"
+        :custom-colors="customColors"
+        @color-change="handleColorChange"
+        @opacity-change="handleOpacityChange"
+        @stroke-width-change="handleStrokeWidthChange"
+        @custom-color-add="handleCustomColorAdd"
+        @custom-color-delete="handleCustomColorDelete"
+      />
+    </div>
   </div>
 </template>
 <style scoped lang="scss">

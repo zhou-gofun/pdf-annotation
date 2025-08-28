@@ -39,6 +39,52 @@ See https://github.com/adobe-type-tools/cmap-resources
   </head>
 
   <body tabindex="0">
+    <!-- Loading 遮罩层 -->
+    <div id="pdfjs-loading-overlay" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #f8f9fa;
+      z-index: 999999;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      user-select: none;
+    ">
+      <div style="
+        width: 48px;
+        height: 48px;
+        border: 4px solid #e9ecef;
+        border-top: 4px solid #007bff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      "></div>
+      <div style="
+        margin-top: 16px;
+        font-size: 14px;
+        color: #6c757d;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-weight: 500;
+      ">Loading PDF...</div>
+      <div style="
+        margin-top: 8px;
+        font-size: 12px;
+        color: #adb5bd;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      ">Please wait while we prepare your document</div>
+    </div>
+
+    <!-- 添加动画CSS -->
+    <style>
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+
     <div id="outerContainer">
       <span id="viewer-alert" class="visuallyHidden" role="alert"></span>
 
@@ -228,7 +274,7 @@ See https://github.com/adobe-type-tools/cmap-resources
                       </div>
                     </div>
                   </div>
-                  <div id="editorHighlight" class="toolbarButtonWithContainer">
+                  <div id="editorHighlight" class="toolbarButtonWithContainer hidden">
                     <button id="editorHighlightButton" class="toolbarButton" type="button" disabled="disabled" role="radio" aria-expanded="false" aria-haspopup="true" aria-controls="editorHighlightParamsToolbar" tabindex="0" data-l10n-id="pdfjs-editor-highlight-button">
                       <span data-l10n-id="pdfjs-editor-highlight-button-label"></span>
                     </button>
@@ -253,7 +299,7 @@ See https://github.com/adobe-type-tools/cmap-resources
                       </div>
                     </div>
                   </div>
-                  <div id="editorFreeText" class="toolbarButtonWithContainer">
+                  <div id="editorFreeText" class="toolbarButtonWithContainer hidden">
                     <button id="editorFreeTextButton" class="toolbarButton" type="button" disabled="disabled" role="radio" aria-expanded="false" aria-haspopup="true" aria-controls="editorFreeTextParamsToolbar" tabindex="0" data-l10n-id="pdfjs-editor-free-text-button">
                       <span data-l10n-id="pdfjs-editor-free-text-button-label"></span>
                     </button>
@@ -305,7 +351,7 @@ See https://github.com/adobe-type-tools/cmap-resources
                   </div>
                 </div>
 
-                <div id="editorModeSeparator" class="verticalToolbarSeparator"></div>
+                <div id="editorModeSeparator" class="verticalToolbarSeparator hidden"></div>
 
                 <div class="toolbarHorizontalGroup hiddenMediumView">
 
@@ -324,8 +370,8 @@ See https://github.com/adobe-type-tools/cmap-resources
                   </button>
                   
                   <!-- 批注按钮 -->
-                  <button id="annotationToggleButton" class="toolbarButton" type="button" tabindex="0" title="批注">
-                    <span>批注</span>
+                  <button id="annotationToggleButton" class="toolbarButton" type="button" tabindex="0" title="笺注">
+                    <span>笺注</span>
                   </button>
                 </div>
                 

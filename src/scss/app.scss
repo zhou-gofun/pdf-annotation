@@ -1,3 +1,42 @@
+// 隐藏PDF.js原生编辑器直到完全加载完成
+body:not(.pdfjs-fully-loaded) {
+  // 隐藏这些编辑器工具栏，避免它们在加载时闪现
+  #editorHighlightButton,
+  #editorFreeTextButton, 
+  #editorInkButton,
+  #editorStampButton,
+  .editorParamsToolbar,
+  #editorModeButtons {
+    display: none !important;
+  }
+  
+  // 隐藏编辑器相关的弹出层和工具提示
+  .colorPicker,
+  #editorHighlightParamsToolbar,
+  #editorFreeTextParamsToolbar,
+  #editorInkParamsToolbar,
+  #editorStampParamsToolbar {
+    display: none !important;
+  }
+}
+
+// 完全加载后，仍然隐藏这些编辑器按钮，因为我们使用自定义的工具栏
+body.pdfjs-fully-loaded {
+  #editorHighlightButton,
+  #editorFreeTextButton, 
+  #editorInkButton,
+  #editorStampButton,
+  .editorParamsToolbar,
+  #editorModeButtons,
+  .colorPicker,
+  #editorHighlightParamsToolbar,
+  #editorFreeTextParamsToolbar,
+  #editorInkParamsToolbar,
+  #editorStampParamsToolbar {
+    display: none !important;
+  }
+}
+
 .PdfjsAnnotationExtension {
     .toolbar {
         z-index: 99;

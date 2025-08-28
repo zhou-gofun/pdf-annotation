@@ -48,51 +48,25 @@
               </div>
               
               <!-- 下拉箭头按钮 - 只在选中当前颜色时显示，否则隐藏但占位 -->
-              <Popover trigger="click" placement="bottomLeft" :arrow="false">
+              <Popover trigger="click" placement="bottomLeft" :arrow="false" :z-index="1000">
                 <template #content>
-                  <div class="color-picker-panel">
-                    <div class="color-grid">
-                      <div class="color-row" v-for="(row, rowIndex) in colorGrid" :key="rowIndex">
-                        <div
-                          v-for="gridColor in row"
-                          :key="gridColor"
-                          class="color-cell"
-                          :style="{ backgroundColor: gridColor }"
-                          :class="{ selected: color === gridColor }"
-                          @click="updateToolColor(index, gridColor)"
-                        />
-                      </div>
-                    </div>
-                    <div class="custom-section">
-                      <div class="custom-color">
-                        <button class="custom-btn" @click="openCustomColorPickerForTool(index)">
-                          <span>+</span>
-                        </button>
-                        <span>Custom</span>
-                      </div>
-                      <div class="opacity-section">
-                        <span>Opacity</span>
-                        <Slider
-                          v-model:value="opacity"
-                          :min="0"
-                          :max="100"
-                          @change="(value: number | [number, number]) => handleOpacityChange(Array.isArray(value) ? value[0] : value)"
-                        />
-                        <span>{{ opacity }}%</span>
-                      </div>
-                      <div v-if="currentAnnotation && currentAnnotation.styleEditable?.strokeWidth" class="stroke-width-section">
-                        <span>浪宽</span>
-                        <Slider
-                          v-model:value="strokeWidth"
-                          :min="1"
-                          :max="5"
-                          :step="0.5"
-                          @change="(value: number | [number, number]) => handleStrokeWidthChange(Array.isArray(value) ? value[0] : value)"
-                        />
-                        <span>{{ strokeWidth }}</span>
-                      </div>
-                    </div>
-                  </div>
+                  <ColorPanel
+                    :selected-color="color"
+                    :opacity="opacity"
+                    :stroke-width="strokeWidth"
+                    :show-opacity="true"
+                    :show-stroke-width="currentAnnotation?.styleEditable?.strokeWidth || false"
+                    :stroke-width-label="getStrokeWidthLabel(currentAnnotation?.type)"
+                    :stroke-width-min="1"
+                    :stroke-width-max="5"
+                    :stroke-width-step="0.5"
+                    :custom-colors="getCustomColorsForTool(currentAnnotation?.type)"
+                    @color-change="(newColor) => updateToolColor(index, newColor)"
+                    @opacity-change="handleOpacityChange"
+                    @stroke-width-change="handleStrokeWidthChange"
+                    @custom-color-add="(newColor) => handleCustomColorAdd(currentAnnotation?.type, newColor)"
+                    @custom-color-delete="(colorToDelete) => handleCustomColorDelete(currentAnnotation?.type, colorToDelete)"
+                  />
                 </template>
                 <div 
                   class="color-dropdown-trigger"
@@ -209,7 +183,6 @@ import { ref, computed, watch, defineExpose } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   message,
-  Slider,
   Popover 
 } from 'ant-design-vue'
 import {
@@ -237,6 +210,7 @@ import {
 import SignatureTool from './signature.vue'
 import StampTool from './stamp.vue'
 import { defaultOptions } from '../../const/default_options'
+import ColorPanel from '../common/ColorPanel.vue'
 // import { FilePdfOutlined } from '@ant-design/icons-vue'
 
 interface Props {
@@ -249,6 +223,8 @@ interface Props {
   onUndo?: () => void
   onRedo?: () => void
   onEraser?: () => void
+  onOpacityChange?: (opacity: number) => void
+  onStrokeWidthChange?: (strokeWidth: number) => void
 }
 const props = defineProps<Props>()
 const { t } = useI18n()
@@ -259,10 +235,13 @@ const ColorableIcon = ({ color, annotationType }: { color: string, annotationTyp
 }
 
 // 状态
-// const colorPickerOpen = ref(false)
 const opacity = ref(100)
 const strokeWidth = ref(1)
 const colorInput = ref<HTMLInputElement | null>(null)
+
+// 自定义颜色管理
+const customColors = ref<Record<number, string[]>>({})
+
 
 // 获取当前工具的选中颜色
 const getCurrentToolColor = (annotation: IAnnotationType): string => {
@@ -375,13 +354,6 @@ const filteredAnnotations = computed<IAnnotationType[]>(() => {
   return allAnnotations.filter(annotation => categoryTypes.includes(annotation.type as never))
 })
 
-// 颜色网格配置 - 按照annotate_2.png的设计
-const colorGrid = [
-  ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#c9baff', '#ffbaff', '#ffb3ba'],
-  ['#ff7f7f', '#ffbf7f', '#ffff7f', '#7fff9f', '#7fcfff', '#9f7fff', '#ff7fff', '#ff7f7f'],
-  ['#8b0000', '#ff8c00', '#ffd700', '#008000', '#008b8b', '#000080', '#800080', '#8b0000'],
-  ['#696969', '#a9a9a9', '#000000', '#000000', '#000000', '#000000', '#000000', '#ffffff']
-]
 
 const annotations = ref<IAnnotationType[]>(filteredAnnotations.value)
 const dataTransfer = ref<string | null>(null)
@@ -455,22 +427,44 @@ function updateToolColor(colorIndex: number, newColor: string) {
   handleColorChange(newColor)
 }
 
-// 为特定工具打开自定义颜色选择器
-function openCustomColorPickerForTool(colorIndex: number) {
-  // 使用共享的隐藏颜色输入框
-  if (colorInput.value && currentAnnotation.value) {
-    colorInput.value.value = currentAnnotation.value.style?.color || '#000000'
-    
-    // 创建临时事件处理器
-    const handleColorChange = (e: Event) => {
-      const newColor = (e.target as HTMLInputElement).value
-      updateToolColor(colorIndex, newColor)
-      colorInput.value?.removeEventListener('input', handleColorChange)
-    }
-    
-    colorInput.value.addEventListener('input', handleColorChange)
-    colorInput.value.click()
+// 颜色相关方法
+function getCustomColorsForTool(toolType?: number): string[] {
+  if (!toolType) return []
+  return customColors.value[toolType] || []
+}
+
+function handleCustomColorAdd(toolType: number | undefined, color: string) {
+  if (!toolType) return
+  
+  if (!customColors.value[toolType]) {
+    customColors.value[toolType] = []
   }
+  
+  // 避免重复添加
+  if (!customColors.value[toolType].includes(color)) {
+    customColors.value[toolType].push(color)
+  }
+}
+
+function handleCustomColorDelete(toolType: number | undefined, color: string) {
+  if (!toolType || !customColors.value[toolType]) return
+  
+  const index = customColors.value[toolType].indexOf(color)
+  if (index > -1) {
+    customColors.value[toolType].splice(index, 1)
+  }
+}
+
+function getStrokeWidthLabel(toolType?: number): string {
+  if (!toolType) return '线宽'
+  
+  const labels: Record<number, string> = {
+    [Annotation.SQUIGGLY]: '波浪线宽',
+    [Annotation.FREEHAND]: '笔触宽度',
+    [Annotation.FREE_HIGHLIGHT]: '高亮宽度'
+  }
+  
+  return labels[toolType] || '线宽'
 }
 
 // 新增操作方法
@@ -492,7 +486,25 @@ function handleEraser() {
 
 function handleOpacityChange(value: number) {
   opacity.value = value
-  // TODO: 应用透明度变化
+  // 实时更新当前注释的透明度
+  if (currentAnnotation.value) {
+    const updatedAnnotation: IAnnotationType = {
+      ...currentAnnotation.value,
+      style: { ...currentAnnotation.value.style, opacity: value / 100 }
+    }
+    
+    // 更新annotations数组中对应的工具
+    annotations.value = annotations.value.map(a =>
+      a.type === currentAnnotation.value?.type ? updatedAnnotation : a
+    )
+    
+    currentAnnotation.value = updatedAnnotation
+    
+    // 通知父组件更新样式（用于实时渲染）
+    if (props.onOpacityChange) {
+      props.onOpacityChange(value)
+    }
+  }
 }
 
 function handleStrokeWidthChange(value: number) {
@@ -509,8 +521,15 @@ function handleStrokeWidthChange(value: number) {
     )
     
     currentAnnotation.value = updatedAnnotation
+    
+    // 通知父组件更新样式（用于实时渲染）
+    if (props.onStrokeWidthChange) {
+      props.onStrokeWidthChange(value)
+    }
   }
 }
+
+
 function updateStyle(annotationType: AnnotationType, style: IAnnotationStyle) {
   annotations.value = annotations.value.map(annotation => {
     if (annotation.type.toString() === annotationType.toString()) {
@@ -543,7 +562,7 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
   display: flex;
   align-items: center;
   justify-content: center; /* 居中对齐 */
-  padding: 4px 8px;
+  // padding: 4px 8px;
   background: var(--toolbar-bg-color, #f8f9fa);
   border-bottom: 1px solid var(--toolbar-border-color, #e0e0e0);
   min-height: 35px;
@@ -630,7 +649,7 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
 
 .color-section {
   width: 146px;
-  padding: 5px 8px;
+  padding: 3px 8px;
   background-color: rgba(0, 0, 0, 0.04);
   border-radius: 7px;
   background: white; /* 白色背景 */

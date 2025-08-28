@@ -5,7 +5,7 @@ import type { EventBus, PDFPageView, PDFViewerApplication } from 'pdfjs'
 import { initializeI18n } from './locale/index'
 import { SyncOutlined } from '@ant-design/icons-vue'
 import { t } from 'i18next'
-import { annotationDefinitions, HASH_PARAMS_DEFAULT_EDITOR_ACTIVE, HASH_PARAMS_DEFAULT_SIDEBAR_OPEN, HASH_PARAMS_GET_URL, HASH_PARAMS_POST_URL, HASH_PARAMS_USERNAME, type IAnnotationStore, type IAnnotationStyle, type IAnnotationType } from './const/definitions'
+import { annotationDefinitions, Annotation, HASH_PARAMS_DEFAULT_EDITOR_ACTIVE, HASH_PARAMS_DEFAULT_SIDEBAR_OPEN, HASH_PARAMS_GET_URL, HASH_PARAMS_POST_URL, HASH_PARAMS_USERNAME, type IAnnotationStore, type IAnnotationStyle, type IAnnotationType } from './const/definitions'
 import { Painter } from './painter'
 import { once, parseQueryString, hashArrayOfObjects } from './utils/utils'
 import { defaultOptions } from './const/default_options'
@@ -176,6 +176,9 @@ class PdfjsAnnotationExtension {
     this.renderPopBar()
     this.renderAnnotationMenu()
     this.renderComment()
+    
+    // 等待PDF加载完成后隐藏loading
+    this.setupLoadingControl()
   }
 
   private parseHashParams() {
@@ -223,6 +226,49 @@ class PdfjsAnnotationExtension {
     }
   }
 
+  private setupLoadingControl() {
+    let documentLoaded = false
+    let firstPageRendered = false
+    
+    // 监听文档加载完成
+    this.PDFJS_EventBus._on('documentloaded', () => {
+      documentLoaded = true
+      this.checkAndHideLoading(documentLoaded, firstPageRendered)
+    })
+    
+    // 监听第一页渲染完成
+    this.PDFJS_EventBus._on('pagerendered', (evt: any) => {
+      if (evt.pageNumber === 1 && !firstPageRendered) {
+        firstPageRendered = true
+        this.checkAndHideLoading(documentLoaded, firstPageRendered)
+      }
+    })
+    
+    // 备用方案：5秒后强制隐藏loading
+    setTimeout(() => {
+      this.hideLoadingOverlay()
+    }, 100)
+  }
+  
+  private checkAndHideLoading(documentLoaded: boolean, firstPageRendered: boolean) {
+    // 当文档加载完成且第一页渲染完成时，隐藏loading
+    if (documentLoaded && firstPageRendered) {
+      setTimeout(() => {
+        this.hideLoadingOverlay()
+      }, 500) // 短暂延迟确保所有初始化完成
+    }
+  }
+  
+  private hideLoadingOverlay() {
+    const loadingOverlay = document.getElementById('pdfjs-loading-overlay')
+    if (loadingOverlay) {
+      loadingOverlay.style.display = 'none'
+    }
+    
+    // 标记应用完全加载，显示PDF.js原生编辑器按钮
+    document.body.classList.add('pdfjs-fully-loaded')
+  }
+
   private isCommentOpen(): boolean {
     return !document.body.classList.contains('PdfjsAnnotationExtension_Comment_hidden')
   }
@@ -233,6 +279,11 @@ class PdfjsAnnotationExtension {
       // 默认选中View按钮，隐藏二级菜单
       this.selectedCategoryRef.value = 'view'
       this.hideSecondaryToolbar()
+      // 初始化时激活选择工具，允许用户选择和操作已有的注释
+      const selectTool = annotationDefinitions.find(tool => tool.type === Annotation.SELECT)
+      if (selectTool) {
+        this.painter.activate(selectTool, null)
+      }
       
       // 设置一级菜单按钮事件
       const primaryMenuButtons = document.querySelectorAll('.primaryMenuButton')
@@ -252,6 +303,11 @@ class PdfjsAnnotationExtension {
             if (category === 'view') {
               // 选中View时隐藏二级菜单，页面向上填充
               this.hideSecondaryToolbar()
+              // 激活选择工具，允许用户选择和操作已有的注释
+              const selectTool = annotationDefinitions.find(tool => tool.type === Annotation.SELECT)
+              if (selectTool) {
+                this.painter.activate(selectTool, null)
+              }
             } else {
               // 选中其他按钮时显示二级菜单，页面向下移
               this.showSecondaryToolbar()
@@ -351,7 +407,9 @@ class PdfjsAnnotationExtension {
         },
         onUndo: () => this.handleUndo(),
         onRedo: () => this.handleRedo(),
-        onEraser: () => this.handleEraser()
+        onEraser: () => this.handleEraser(),
+        onOpacityChange: (opacity: number) => this.handleOpacityChange(opacity),
+        onStrokeWidthChange: (strokeWidth: number) => this.handleStrokeWidthChange(strokeWidth)
       })
       const instance = app.mount(el)
       this.customToolbarRef.value = instance
@@ -379,7 +437,9 @@ class PdfjsAnnotationExtension {
       },
       onUndo: () => this.handleUndo(),
       onRedo: () => this.handleRedo(),
-      onEraser: () => this.handleEraser()
+      onEraser: () => this.handleEraser(),
+      onOpacityChange: (opacity: number) => this.handleOpacityChange(opacity),
+      onStrokeWidthChange: (strokeWidth: number) => this.handleStrokeWidthChange(strokeWidth)
     })
     const instance = app.mount(el)
     this.customToolbarRef.value = instance
@@ -697,6 +757,28 @@ class PdfjsAnnotationExtension {
     // 激活擦除模式
     if (this.painter) {
       this.painter.activateEraser()
+    }
+  }
+
+  private handleOpacityChange(opacity: number): void {
+    // 实时更新当前工具的透明度
+    if (this.painter && this.painter.currentAnnotation) {
+      // 更新当前注释的透明度样式
+      this.painter.currentAnnotation.style = {
+        ...this.painter.currentAnnotation.style,
+        opacity: opacity / 100
+      }
+    }
+  }
+
+  private handleStrokeWidthChange(strokeWidth: number): void {
+    // 实时更新当前工具的线宽
+    if (this.painter && this.painter.currentAnnotation) {
+      // 更新当前注释的线宽样式
+      this.painter.currentAnnotation.style = {
+        ...this.painter.currentAnnotation.style,
+        strokeWidth: strokeWidth
+      }
     }
   }
 

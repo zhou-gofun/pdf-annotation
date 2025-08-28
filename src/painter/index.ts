@@ -41,7 +41,7 @@ export class Painter {
     private editorStore: Map<string, Editor> = new Map() // 存储编辑器实例
     private pdfViewerApplication: PDFViewerApplication // PDFViewerApplication 实例
     private webSelection: WebSelection // WebSelection 实例
-    private currentAnnotation: IAnnotationType | null = null // 当前批注类型
+    public currentAnnotation: IAnnotationType | null = null // 当前批注类型
     private store: Store // 存储实例
     private selector: Selector // 选择器实例
     private transform: Transform // 转换器
@@ -695,6 +695,21 @@ export class Painter {
         return this.store.annotations
     }
 
+    /**
+     * @description 更新当前注释的样式
+     * @param style 
+     */
+    public updateCurrentAnnotationStyle(style: { color?: string; opacity?: number }) {
+        if (this.currentAnnotation && this.currentAnnotation.style) {
+            if (style.color !== undefined) {
+                this.currentAnnotation.style.color = style.color
+            }
+            if (style.opacity !== undefined) {
+                this.currentAnnotation.style.opacity = style.opacity
+            }
+        }
+    }
+    
     /**
      * @description 更新样式
      * @param annotationStore
