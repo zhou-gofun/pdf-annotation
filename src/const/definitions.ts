@@ -263,7 +263,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         },
         styleEditable: {
             color: true,
-            opacity: false,
+            opacity: true,
             strokeWidth: false,
         } // 是否可编辑样式
     },
@@ -282,7 +282,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         },
         styleEditable: {
             color: true,
-            opacity: false,
+            opacity: true,
             strokeWidth: false
         } // 是否可编辑样式
     },
@@ -301,7 +301,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         },
         styleEditable: {
             color: true,
-            opacity: false,
+            opacity: true,
             strokeWidth: true
         } // 是否可编辑样式
     },
