@@ -203,6 +203,8 @@ export interface IAnnotationStore {
     title: string; // 批注标题
     type: typeof Annotation[keyof typeof Annotation]; // 批注类型
     color?: string | null; // 可选颜色，可以是 undefined 或 null
+    opacity?: number | null;
+    strokeWidth?: number | null;
     subtype: PdfjsAnnotationSubtype;
     fontSize?: number | null;
     pdfjsType: PdfjsAnnotationType; // PDF.js 批注类型
@@ -245,7 +247,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         styleEditable: {
             color: true,
             strokeWidth: false,
-            opacity: false,
+            opacity: true,
         }, // 是否可编辑样式
     },
     {
@@ -264,7 +266,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         styleEditable: {
             color: true,
             opacity: true,
-            strokeWidth: false,
+            strokeWidth: true,
         } // 是否可编辑样式
     },
     {
@@ -283,7 +285,7 @@ export const annotationDefinitions: IAnnotationType[] = [
         styleEditable: {
             color: true,
             opacity: true,
-            strokeWidth: false
+            strokeWidth: true
         } // 是否可编辑样式
     },
     {

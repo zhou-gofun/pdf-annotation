@@ -57,10 +57,10 @@
                     :show-opacity="true"
                     :show-stroke-width="currentAnnotation?.styleEditable?.strokeWidth || false"
                     :stroke-width-label="getStrokeWidthLabel(currentAnnotation?.type)"
-                    :stroke-width-min="1"
-                    :stroke-width-max="5"
+                    :stroke-width-min="0.5"
+                    :stroke-width-max="20"
                     :stroke-width-step="0.5"
-                    :custom-colors="getCustomColorsForTool(currentAnnotation?.type)"
+                    :tool-type="currentAnnotation?.type"
                     @color-change="(newColor) => updateToolColor(index, newColor)"
                     @opacity-change="handleOpacityChange"
                     @stroke-width-change="handleStrokeWidthChange"
@@ -211,6 +211,7 @@ import SignatureTool from './signature.vue'
 import StampTool from './stamp.vue'
 import { defaultOptions } from '../../const/default_options'
 import ColorPanel from '../common/ColorPanel.vue'
+import { useColorPalette } from '../../store/colorPalette'
 // import { FilePdfOutlined } from '@ant-design/icons-vue'
 
 interface Props {
@@ -229,6 +230,12 @@ interface Props {
 const props = defineProps<Props>()
 const { t } = useI18n()
 
+// 使用统一的调色板数据管理
+const { 
+  addCustomColor,
+  deleteCustomColor
+} = useColorPalette()
+
 // 创建可着色的图标组件
 const ColorableIcon = ({ color, annotationType }: { color: string, annotationType: number }) => {
   return createColorableIcon(annotationType)(color)
@@ -238,9 +245,6 @@ const ColorableIcon = ({ color, annotationType }: { color: string, annotationTyp
 const opacity = ref(100)
 const strokeWidth = ref(1)
 const colorInput = ref<HTMLInputElement | null>(null)
-
-// 自定义颜色管理
-const customColors = ref<Record<number, string[]>>({})
 
 
 // 获取当前工具的选中颜色
@@ -295,6 +299,7 @@ initializeToolColors()
 // Annotate工具的固定顺序
 const annotateTools = computed<IAnnotationType[]>(() => {
   const toolOrder = [
+    Annotation.SELECT,
     Annotation.HIGHLIGHT,
     Annotation.UNDERLINE, 
     Annotation.STRIKEOUT,
@@ -428,31 +433,18 @@ function updateToolColor(colorIndex: number, newColor: string) {
 }
 
 // 颜色相关方法
-function getCustomColorsForTool(toolType?: number): string[] {
-  if (!toolType) return []
-  return customColors.value[toolType] || []
-}
-
 function handleCustomColorAdd(toolType: number | undefined, color: string) {
   if (!toolType) return
   
-  if (!customColors.value[toolType]) {
-    customColors.value[toolType] = []
-  }
-  
-  // 避免重复添加
-  if (!customColors.value[toolType].includes(color)) {
-    customColors.value[toolType].push(color)
-  }
+  // 使用统一数据管理添加自定义颜色
+  addCustomColor(toolType, color)
 }
 
 function handleCustomColorDelete(toolType: number | undefined, color: string) {
-  if (!toolType || !customColors.value[toolType]) return
+  if (!toolType) return
   
-  const index = customColors.value[toolType].indexOf(color)
-  if (index > -1) {
-    customColors.value[toolType].splice(index, 1)
-  }
+  // 使用统一数据管理删除自定义颜色
+  deleteCustomColor(toolType, color)
 }
 
 function getStrokeWidthLabel(toolType?: number): string {

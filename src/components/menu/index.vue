@@ -8,6 +8,7 @@ import { AnnoIcon, DeleteIcon, PaletteIcon } from '../../const/icon'
 import { defaultOptions } from '../../const/default_options'
 import { PAINTER_WRAPPER_PREFIX } from '../../painter/const'
 import ColorPanel from '../common/ColorPanel.vue'
+import { useColorPalette } from '../../store/colorPalette'
 
 // ---------------- props ----------------
 interface Props {
@@ -16,6 +17,16 @@ interface Props {
   onDelete: (annotation: IAnnotationStore) => void
 }
 const props = defineProps<Props>()
+
+// 使用统一的调色板数据管理
+const { 
+  addCustomColor,
+  deleteCustomColor,
+  setToolOpacity,
+  getToolOpacity,
+  setToolStrokeWidth,
+  getToolStrokeWidth
+} = useColorPalette()
 
 // ---------------- refs ----------------
 const containerRef = ref<HTMLElement | null>(null)
@@ -26,9 +37,6 @@ const currentAnnotation = ref<IAnnotationStore | null>(null)
 const currentColor = ref<string | null>(defaultOptions.setting.COLOR)
 const strokeWidth = ref<number>(defaultOptions.setting.STROKE_WIDTH)
 const opacity = ref<number>(defaultOptions.setting.OPACITY)
-
-// 自定义颜色管理
-const customColors = ref<string[]>([])
 
 
 // ---------------- expose ----------------
@@ -52,6 +60,8 @@ const isStyleSupported = computed(() => {
   return annotationDefinitions.find(item => item.type === currentAnnotation.value!.type)?.styleEditable
 })
 
+console.log('isStyleSupported', isStyleSupported)
+
 // ---------------- actions ----------------
 function open(annotation: IAnnotationStore, selectorRect: IRect) {
   currentAnnotation.value = annotation
@@ -59,8 +69,11 @@ function open(annotation: IAnnotationStore, selectorRect: IRect) {
 
   const currentShape = getKonvaShapeForString(annotation.konvaString)
   currentColor.value = currentShape.stroke()
-  strokeWidth.value = currentShape.strokeWidth()
-  opacity.value = currentShape.opacity() * 100
+  
+  // 从统一数据管理中获取工具的透明度和线宽配置
+  const toolType = annotation.type
+  strokeWidth.value = getToolStrokeWidth(toolType, currentShape.strokeWidth())
+  opacity.value = getToolOpacity(toolType, currentShape.opacity() * 100)
 
   nextTick(() => {
     const menuEl = containerRef.value
@@ -117,34 +130,45 @@ function handleAnnotationStyleChange(style: IAnnotationStyle) {
 // 颜色相关方法
 function handleColorChange(color: string) {
   currentColor.value = color
+  // 保存到统一数据管理中
+  if (currentAnnotation.value) {
+    // 这里可以添加保存颜色到工具配置的逻辑，但由于这是修改现有注释，主要通过样式回调
+  }
   // 实时更新注释样式
   handleAnnotationStyleChange({ color })
 }
 
 function handleOpacityChange(opacityVal: number) {
   opacity.value = opacityVal
+  // 保存到统一数据管理中
+  if (currentAnnotation.value) {
+    setToolOpacity(currentAnnotation.value.type, opacityVal)
+  }
   // 实时更新注释样式
   handleAnnotationStyleChange({ opacity: opacityVal / 100 })
 }
 
 function handleStrokeWidthChange(strokeVal: number) {
   strokeWidth.value = strokeVal
+  // 保存到统一数据管理中
+  if (currentAnnotation.value) {
+    setToolStrokeWidth(currentAnnotation.value.type, strokeVal)
+  }
   // 实时更新注释样式
   handleAnnotationStyleChange({ strokeWidth: strokeVal })
 }
 
 function handleCustomColorAdd(color: string) {
-  // 添加到自定义颜色列表
-  if (!customColors.value.includes(color)) {
-    customColors.value.push(color)
+  // 添加到统一数据管理的自定义颜色列表
+  if (currentAnnotation.value) {
+    addCustomColor(currentAnnotation.value.type, color)
   }
 }
 
 function handleCustomColorDelete(color: string) {
-  // 从自定义颜色列表中删除
-  const index = customColors.value.indexOf(color)
-  if (index > -1) {
-    customColors.value.splice(index, 1)
+  // 从统一数据管理的自定义颜色列表中删除
+  if (currentAnnotation.value) {
+    deleteCustomColor(currentAnnotation.value.type, color)
   }
 }
 
@@ -176,10 +200,10 @@ function handleCustomColorDelete(color: string) {
         :show-opacity="!!isStyleSupported?.opacity"
         :show-stroke-width="!!isStyleSupported?.strokeWidth"
         :stroke-width-label="'线宽'"
-        :stroke-width-min="1"
+        :stroke-width-min="0.5"
         :stroke-width-max="20"
-        :stroke-width-step="1"
-        :custom-colors="customColors"
+        :stroke-width-step="0.5"
+        :tool-type="currentAnnotation.type"
         @color-change="handleColorChange"
         @opacity-change="handleOpacityChange"
         @stroke-width-change="handleStrokeWidthChange"

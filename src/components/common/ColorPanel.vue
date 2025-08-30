@@ -1,7 +1,7 @@
 <template>
-  <div class="universal-color-panel">
+  <div class="universal-color-panel" @click.stop>
     <!-- 颜色网格 -->
-    <div class="color-grid">
+    <div class="color-grid" @click.stop>
       <!-- 第一行：淡色 -->
       <div class="color-row">
         <div
@@ -10,7 +10,7 @@
           class="color-cell"
           :style="{ backgroundColor: color }"
           :class="{ selected: selectedColor === color }"
-          @click="handleColorSelect(color)"
+          @click.stop="handleColorSelect(color)"
         />
       </div>
       <!-- 第二行：中色 -->
@@ -21,7 +21,7 @@
           class="color-cell"
           :style="{ backgroundColor: color }"
           :class="{ selected: selectedColor === color }"
-          @click="handleColorSelect(color)"
+          @click.stop="handleColorSelect(color)"
         />
       </div>
       <!-- 第三行：深色 -->
@@ -32,7 +32,7 @@
           class="color-cell"
           :style="{ backgroundColor: color }"
           :class="{ selected: selectedColor === color }"
-          @click="handleColorSelect(color)"
+          @click.stop="handleColorSelect(color)"
         />
       </div>
       <!-- 第四行：灰度和黑白 -->
@@ -43,33 +43,33 @@
           class="color-cell"
           :style="{ backgroundColor: color }"
           :class="{ selected: selectedColor === color }"
-          @click="handleColorSelect(color)"
+          @click.stop="handleColorSelect(color)"
         />
       </div>
     </div>
     
     <!-- 自定义颜色区域 -->
-    <div class="custom-section">
+    <div class="custom-section" @click.stop>
       <span class="custom-label">Custom</span>
       <div class="custom-colors">
         <!-- 已保存的自定义颜色 -->
         <div
-          v-for="customColor in customColors"
+          v-for="customColor in customColorsComputed"
           :key="customColor"
           class="custom-color-cell"
           :style="{ backgroundColor: customColor }"
           :class="{ selected: selectedColor === customColor }"
-          @click="handleColorSelect(customColor)"
+          @click.stop="handleColorSelect(customColor)"
         />
         <!-- 添加自定义颜色按钮 -->
-        <button class="add-custom-btn" @click="openCustomColorModal">
+        <button class="add-custom-btn" @click.stop="openCustomColorModal">
           <span>+</span>
         </button>
         <!-- 删除按钮（选中自定义颜色时显示） -->
         <button 
           v-if="isCustomColorSelected" 
           class="delete-custom-btn" 
-          @click="deleteSelectedCustomColor"
+          @click.stop="deleteSelectedCustomColor"
         >
           <span>🗑️</span>
         </button>
@@ -77,7 +77,7 @@
     </div>
     
     <!-- 透明度控制 -->
-    <div v-if="showOpacity" class="opacity-section">
+    <div v-if="showOpacity" class="opacity-section" @click.stop>
       <span class="opacity-label">Opacity</span>
       <div class="opacity-control">
         <Slider
@@ -92,7 +92,7 @@
     </div>
     
     <!-- 线宽控制 -->
-    <div v-if="showStrokeWidth" class="stroke-width-section">
+    <div v-if="showStrokeWidth" class="stroke-width-section" @click.stop>
       <span class="stroke-label">{{ strokeWidthLabel }}</span>
       <div class="stroke-control">
         <Slider
@@ -120,14 +120,16 @@
       cancel-text="取消"
       @ok="handleCustomColorConfirm"
       @cancel="handleCustomColorCancel"
+      @click.stop
     >
-      <div class="advanced-color-picker">
+      <div class="advanced-color-picker" @click.stop>
         <!-- 颜色渐变面板 -->
         <div class="color-gradient-panel">
           <div 
             class="saturation-panel" 
             ref="saturationPanel" 
             @mousedown="onSaturationMouseDown"
+            @click.stop
             :style="{ background: `linear-gradient(to right, #fff, ${hueColor})` }"
           >
             <div class="saturation-overlay">
@@ -137,32 +139,32 @@
         </div>
         
         <!-- 色相条 -->
-        <div class="hue-bar" ref="hueBar" @mousedown="onHueMouseDown">
+        <div class="hue-bar" ref="hueBar" @mousedown="onHueMouseDown" @click.stop>
           <div class="hue-pointer" :style="huePointerStyle"></div>
         </div>
         
         <!-- RGB/Hex输入框 -->
-        <div class="color-inputs">
+        <div class="color-inputs" @click.stop>
           <div class="input-group">
             <label>Hex</label>
-            <input type="text" v-model="hexValue" @input="onHexChange" />
+            <input type="text" v-model="hexValue" @input="onHexChange" @click.stop />
           </div>
           <div class="input-group">
             <label>R</label>
-            <input type="number" v-model="rgbValue.r" @input="onRgbChange" min="0" max="255" />
+            <input type="number" v-model="rgbValue.r" @input="onRgbChange" min="0" max="255" @click.stop />
           </div>
           <div class="input-group">
             <label>G</label>
-            <input type="number" v-model="rgbValue.g" @input="onRgbChange" min="0" max="255" />
+            <input type="number" v-model="rgbValue.g" @input="onRgbChange" min="0" max="255" @click.stop />
           </div>
           <div class="input-group">
             <label>B</label>
-            <input type="number" v-model="rgbValue.b" @input="onRgbChange" min="0" max="255" />
+            <input type="number" v-model="rgbValue.b" @input="onRgbChange" min="0" max="255" @click.stop />
           </div>
         </div>
         
         <!-- 颜色预览 -->
-        <div class="color-preview">
+        <div class="color-preview" @click.stop>
           <div class="preview-color" :style="{ backgroundColor: tempCustomColor }"></div>
         </div>
       </div>
@@ -173,6 +175,7 @@
 <script setup lang="ts">
 import { ref, computed, defineEmits, defineProps, watch } from 'vue'
 import { Slider, Modal } from 'ant-design-vue'
+import { useColorPalette } from '../../store/colorPalette'
 
 interface Props {
   selectedColor?: string
@@ -185,6 +188,7 @@ interface Props {
   strokeWidthMax?: number
   strokeWidthStep?: number
   customColors?: string[]
+  toolType?: number // 新增：工具类型用于区分不同工具的设置
 }
 
 interface Emits {
@@ -202,13 +206,22 @@ const props = withDefaults(defineProps<Props>(), {
   showOpacity: true,
   showStrokeWidth: false,
   strokeWidthLabel: '线宽',
-  strokeWidthMin: 1,
+  strokeWidthMin: 0.5,
   strokeWidthMax: 5,
   strokeWidthStep: 0.5,
-  customColors: () => []
+  customColors: () => [],
+  toolType: 0
 })
 
 const emit = defineEmits<Emits>()
+
+// 使用统一的调色板数据管理
+const { 
+  addCustomColor,
+  deleteCustomColor,
+  getCustomColors,
+  getDefaultColors: getDefaultColorGrid
+} = useColorPalette()
 
 // 响应式数据
 const opacityValue = ref(props.opacity)
@@ -228,27 +241,29 @@ const saturationPointerStyle = ref({ left: '100%', top: '24%' })
 const huePointerStyle = ref({ top: '0%' })
 const hueColor = ref('#ff0000')
 
-// 颜色网格配置 - 已废弃，改用单独的颜色数组
-// const colorGrid = [
-//   ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#c9baff', '#ffbaff'],
-//   ['#ff7f7f', '#ffbf7f', '#ffff7f', '#7fff9f', '#7fcfff', '#9f7fff', '#ff7fff'],
-//   ['#8b0000', '#ff8c00', '#ffd700', '#008000', '#008b8b', '#000080', '#800080'],
-//   ['#ffffff', '#d3d3d3', '#808080', '#404040', '#000000', '#000000', '#000000']
-// ]
+// 使用统一数据管理的默认颜色
+const colorGrid = getDefaultColorGrid()
 
-// 按照设计图定义的颜色网格
+// 按照设计图定义的颜色网格 - 从统一数据管理中获取
 // 第一行：淡色
-const lightColors = ['#ffcccc', '#ffddaa', '#ffffaa', '#ccffcc', '#aaeeff', '#ddaaff', '#ffaadd']
+const lightColors = computed(() => colorGrid[0])
 // 第二行：中色  
-const mediumColors = ['#ff6666', '#ff9933', '#ffff33', '#66ff66', '#3399ff', '#9966ff', '#ff66dd']
+const mediumColors = computed(() => colorGrid[1])
 // 第三行：深色
-const darkColors = ['#cc0000', '#cc6600', '#cccc00', '#00cc00', '#0066cc', '#6600cc', '#cc0099']
+const darkColors = computed(() => colorGrid[2])
 // 第四行：灰度和黑白
-const grayColors = ['#ffffff', '#d3d3d3', '#808080', '#404040', '#000000', '#000000', '#000000']
+const grayColors = computed(() => colorGrid[3])
 
-// 计算属性
+// 计算属性 - 使用统一的自定义颜色数据
+const customColorsComputed = computed(() => {
+  if (props.toolType) {
+    return getCustomColors(props.toolType)
+  }
+  return props.customColors || []
+})
+
 const isCustomColorSelected = computed(() => {
-  return props.customColors?.includes(props.selectedColor || '') || false
+  return customColorsComputed.value.includes(props.selectedColor || '') || false
 })
 
 // 监听props变化
@@ -282,6 +297,11 @@ function openCustomColorModal() {
 }
 
 function handleCustomColorConfirm() {
+  // 如果有工具类型，添加到统一数据管理中
+  if (props.toolType) {
+    addCustomColor(props.toolType, tempCustomColor.value)
+  }
+  
   emit('customColorAdd', tempCustomColor.value)
   emit('colorChange', tempCustomColor.value)
   customColorModalVisible.value = false
@@ -293,7 +313,12 @@ function handleCustomColorCancel() {
 
 // 删除选中的自定义颜色
 function deleteSelectedCustomColor() {
-  if (props.selectedColor && props.customColors?.includes(props.selectedColor)) {
+  if (props.selectedColor && customColorsComputed.value.includes(props.selectedColor)) {
+    // 如果有工具类型，从统一数据管理中删除
+    if (props.toolType) {
+      deleteCustomColor(props.toolType, props.selectedColor)
+    }
+    
     emit('customColorDelete', props.selectedColor)
   }
 }

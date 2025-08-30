@@ -197,11 +197,12 @@ export class EditorHighLight extends Editor {
         return new Konva.Line({
             points,
             stroke: this.currentAnnotation?.style?.color,
-            strokeWidth: Math.max(strokeWidth * 0.5, 0.3), // 线条宽度也根据strokeWidth调整
+            // strokeWidth: Math.max(strokeWidth * 0.5, 0.3), // 线条宽度也根据strokeWidth调整
+            strokeWidth: this.currentAnnotation?.style?.strokeWidth || 1, // 线条宽度也根据strokeWidth调整
             hitStrokeWidth: 8,
             lineCap: 'round',
             lineJoin: 'round',
-            opacity: 1
+            opacity: this.currentAnnotation?.style?.opacity || 1,
         })
     }
 
@@ -219,7 +220,7 @@ export class EditorHighLight extends Editor {
             y,
             width,
             height,
-            opacity: 0.5,
+            opacity: this.currentAnnotation?.style?.opacity || 0.5,
             fill: this.currentAnnotation?.style?.color
         })
     }
@@ -238,8 +239,8 @@ export class EditorHighLight extends Editor {
             y: height + y,
             width,
             stroke: this.currentAnnotation?.style?.color,
-            opacity: 1,
-            strokeWidth: 0.5,
+            opacity: this.currentAnnotation?.style?.opacity || 1,
+            strokeWidth: this.currentAnnotation?.style?.strokeWidth || 0.5,
             hitStrokeWidth: 10,
             height: 0.5
         })
@@ -259,8 +260,8 @@ export class EditorHighLight extends Editor {
             y: y + height / 2,
             width,
             stroke: this.currentAnnotation?.style?.color,
-            opacity: 1,
-            strokeWidth: 0.5,
+            opacity: this.currentAnnotation?.style?.opacity || 1,
+            strokeWidth: this.currentAnnotation?.style?.strokeWidth || 0.5,
             hitStrokeWidth: 10,
             height: 0.5
         })
