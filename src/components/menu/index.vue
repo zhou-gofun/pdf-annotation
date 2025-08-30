@@ -192,7 +192,7 @@ function handleCustomColorDelete(color: string) {
     </ul>
     
     <!-- 直接显示的调色板 -->
-    <div v-if="showStyle && currentAnnotation" class="color-panel-container">
+    <div v-if="showStyle && currentAnnotation">
       <ColorPanel
         :selected-color="currentColor || '#000000'"
         :opacity="opacity"

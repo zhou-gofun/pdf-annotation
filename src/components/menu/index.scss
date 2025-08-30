@@ -12,7 +12,7 @@
     border: var(--toolbar-border-color);
     border-radius: 6px;
     font: message-box;
-    padding: 4px; // 增加基础内边距避免按钮贴边
+    padding: 8px 12px; // 增加基础内边距避免按钮贴边
 
     &.show {
         display: block;
@@ -113,13 +113,5 @@
             }
         }
     }
-    
-    .color-panel-container {
-        padding: 8px;
-        background-color: var(--doorhanger-bg-color);
-        border-radius: 6px;
-        box-shadow:
-            0 1px 5px var(--doorhanger-border-color),
-            0 0 0 1px var(--doorhanger-border-color);
-    }
+
 }

@@ -42,39 +42,44 @@
               <!-- 颜色按钮 -->
               <div
                 :class="['color-preset', { active: currentAnnotation?.style?.color === color }]"
-                @click="handleColorChange(color)"
+                @click.stop="handleColorChange(color); closeColorPanel()"
               >
                 <ColorableIcon :color="color" :annotationType="currentAnnotation.type" />
               </div>
               
               <!-- 下拉箭头按钮 - 只在选中当前颜色时显示，否则隐藏但占位 -->
-              <Popover trigger="click" placement="bottomLeft" :arrow="false" :z-index="1000">
-                <template #content>
-                  <ColorPanel
-                    :selected-color="color"
-                    :opacity="opacity"
-                    :stroke-width="strokeWidth"
-                    :show-opacity="true"
-                    :show-stroke-width="currentAnnotation?.styleEditable?.strokeWidth || false"
-                    :stroke-width-label="getStrokeWidthLabel(currentAnnotation?.type)"
-                    :stroke-width-min="0.5"
-                    :stroke-width-max="20"
-                    :stroke-width-step="0.5"
-                    :tool-type="currentAnnotation?.type"
-                    @color-change="(newColor) => updateToolColor(index, newColor)"
-                    @opacity-change="handleOpacityChange"
-                    @stroke-width-change="handleStrokeWidthChange"
-                    @custom-color-add="(newColor) => handleCustomColorAdd(currentAnnotation?.type, newColor)"
-                    @custom-color-delete="(colorToDelete) => handleCustomColorDelete(currentAnnotation?.type, colorToDelete)"
-                  />
-                </template>
-                <div 
-                  class="color-dropdown-trigger"
-                  :class="{ invisible: currentAnnotation?.style?.color !== color }"
-                >
-                  <div class="dropdown-arrow">▼</div>
-                </div>
-              </Popover>
+              <div 
+                class="color-dropdown-trigger"
+                :class="{ invisible: currentAnnotation?.style?.color !== color }"
+                @click.stop="toggleColorPanel(index)"
+              >
+                <div class="dropdown-arrow">▼</div>
+              </div>
+              
+              <!-- 自定义下拉面板 -->
+              <div 
+                v-if="showColorPanel && currentColorIndex === index"
+                class="color-panel-dropdown"
+                @click.stop
+              >
+                <ColorPanel
+                  :selected-color="color"
+                  :opacity="opacity"
+                  :stroke-width="strokeWidth"
+                  :show-opacity="true"
+                  :show-stroke-width="currentAnnotation?.styleEditable?.strokeWidth || false"
+                  :stroke-width-label="getStrokeWidthLabel(currentAnnotation?.type)"
+                  :stroke-width-min="0.5"
+                  :stroke-width-max="20"
+                  :stroke-width-step="0.5"
+                  :tool-type="currentAnnotation?.type"
+                  @color-change="(newColor) => updateToolColor(index, newColor)"
+                  @opacity-change="handleOpacityChange"
+                  @stroke-width-change="handleStrokeWidthChange"
+                  @custom-color-add="(newColor) => handleCustomColorAdd(currentAnnotation?.type, newColor)"
+                  @custom-color-delete="(colorToDelete) => handleCustomColorDelete(currentAnnotation?.type, colorToDelete)"
+                />
+              </div>
             </div>
           </template>
           
@@ -179,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineExpose } from 'vue'
+import { ref, computed, watch, defineExpose, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   message,
@@ -233,7 +238,9 @@ const { t } = useI18n()
 // 使用统一的调色板数据管理
 const { 
   addCustomColor,
-  deleteCustomColor
+  deleteCustomColor,
+  setToolOpacity,
+  setToolStrokeWidth
 } = useColorPalette()
 
 // 创建可着色的图标组件
@@ -243,8 +250,10 @@ const ColorableIcon = ({ color, annotationType }: { color: string, annotationTyp
 
 // 状态
 const opacity = ref(100)
-const strokeWidth = ref(1)
+const strokeWidth = ref(1) // 改回默认值1，具体值会在选择工具时更新
 const colorInput = ref<HTMLInputElement | null>(null)
+const showColorPanel = ref(false) // 控制调色板显示
+const currentColorIndex = ref(0) // 当前选中的颜色索引
 
 
 // 获取当前工具的选中颜色
@@ -253,30 +262,71 @@ const getCurrentToolColor = (annotation: IAnnotationType): string => {
   return toolSelectedColors.value[annotation.type] || getToolColors(annotation)[0]
 }
 
+// 获取工具的默认配置
+const getToolDefaultConfig = (toolType: number) => {
+  // 根据工具类型返回默认的透明度和线宽配置
+  const configMap: Record<number, { opacity: number, strokeWidth: number }> = {
+    // 划线类：删除线、下划线、波浪线 - 透明度1，线宽0.5
+    [Annotation.STRIKEOUT]: { opacity: 100, strokeWidth: 0.5 },
+    [Annotation.UNDERLINE]: { opacity: 100, strokeWidth: 0.5 },
+    [Annotation.SQUIGGLY]: { opacity: 100, strokeWidth: 1 },
+    
+    // 自由绘制 - 透明度1，线宽1
+    [Annotation.FREEHAND]: { opacity: 100, strokeWidth: 1 },
+    
+    // 自由高亮 - 透明度0.5，线宽10
+    [Annotation.FREE_HIGHLIGHT]: { opacity: 50, strokeWidth: 10 },
+    
+    // 高亮 - 透明度0.5
+    [Annotation.HIGHLIGHT]: { opacity: 50, strokeWidth: 1 },
+    
+    // 其他工具使用默认配置
+    [Annotation.NOTE]: { opacity: 100, strokeWidth: 1 }
+  }
+  
+  return configMap[toolType] || { opacity: 100, strokeWidth: 1 }
+}
+
 // 为每个工具配置独特的四种颜色
 const getToolColors = (annotation: IAnnotationType): string[] => {
   // 优先从存储中获取，如果没有则使用默认配置
   if (toolColorsStore.value[annotation.type]) {
-    return toolColorsStore.value[annotation.type]
+    return toolColorsStore.value[annotation.type].colors
   }
-  
+
   const colorMap: Record<number, string[]> = {
-    [Annotation.HIGHLIGHT]: ['#ff8c00', '#00ff00', '#ff0000', '#0000ff'],
-    [Annotation.UNDERLINE]: ['#008000', '#0000ff', '#ff0000', '#ff8c00'],
-    [Annotation.STRIKEOUT]: ['#ff0000', '#000000', '#696969', '#8b0000'],
-    [Annotation.SQUIGGLY]: ['#ff69b4', '#00ced1', '#9370db', '#32cd32'],
-    [Annotation.NOTE]: ['#ffd700', '#ff6347', '#4169e1', '#32cd32'],
+    [Annotation.HIGHLIGHT]: ['#ff9933', '#00ff00', '#ff0000', '#0000ff'],
+    [Annotation.UNDERLINE]: ['#00cc00', '#0000ff', '#ff0000', '#ff8c00'],
+    [Annotation.STRIKEOUT]: ['#ff6666', '#000000', '#696969', '#8b0000'],
+    [Annotation.SQUIGGLY]: ['#ff66dd', '#00ced1', '#9370db', '#32cd32'],
+    [Annotation.NOTE]: ['#ffff33', '#ff6347', '#4169e1', '#32cd32'],
     [Annotation.FREEHAND]: ['#000000', '#ff0000', '#0000ff', '#008000'],
-    [Annotation.FREE_HIGHLIGHT]: ['#ff1493', '#00bfff', '#9932cc', '#adff2f']
+    [Annotation.FREE_HIGHLIGHT]: ['#ffaadd', '#00bfff', '#9932cc', '#adff2f']
   }
   
   const defaultColors = colorMap[annotation.type] || ['#ff0000', '#00ff00', '#0000ff', '#ffff00']
-  toolColorsStore.value[annotation.type] = [...defaultColors]
+  const defaultConfig = getToolDefaultConfig(annotation.type)
+  
+  // 初始化工具配置
+  toolColorsStore.value[annotation.type] = {
+    colors: [...defaultColors],
+    opacity: defaultConfig.opacity,
+    strokeWidth: defaultConfig.strokeWidth
+  }
+  
+  // 同时保存到统一数据管理中
+  setToolOpacity(annotation.type, defaultConfig.opacity)
+  setToolStrokeWidth(annotation.type, defaultConfig.strokeWidth)
+  
   return defaultColors
 }
 
-// 存储每个工具的颜色配置
-const toolColorsStore = ref<Record<number, string[]>>({})
+// 存储每个工具的配置（颜色、透明度、线宽）
+const toolColorsStore = ref<Record<number, {
+  colors: string[]
+  opacity: number
+  strokeWidth: number
+}>>({})
 
 // 存储每个工具当前选中的颜色
 const toolSelectedColors = ref<Record<number, string>>({})
@@ -286,7 +336,13 @@ const initializeToolColors = () => {
   Object.values(Annotation).forEach((annotationType) => {
     if (typeof annotationType === 'number') {
       const defaultColors = getToolColors({ type: annotationType } as IAnnotationType)
-      toolColorsStore.value[annotationType] = [...defaultColors]
+      const defaultConfig = getToolDefaultConfig(annotationType)
+      const toolConfig = {
+        colors: [...defaultColors],
+        opacity: defaultConfig.opacity,
+        strokeWidth: defaultConfig.strokeWidth
+      }
+      toolColorsStore.value[annotationType] = toolConfig
       // 初始化每个工具的选中颜色为第一个颜色
       toolSelectedColors.value[annotationType] = defaultColors[0]
     }
@@ -295,6 +351,23 @@ const initializeToolColors = () => {
 
 // 初始化
 initializeToolColors()
+
+// 外部点击监听，关闭调色板
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  // 检查点击是否在调色板区域内，包括Modal
+  if (showColorPanel.value && !target.closest('.color-tool-container') && !target.closest('.ant-modal')) {
+    closeColorPanel()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 
 // Annotate工具的固定顺序
 const annotateTools = computed<IAnnotationType[]>(() => {
@@ -377,14 +450,30 @@ watch(() => props.selectedCategory, () => {
 
 // methods
 function onAnnotationClick(annotation: IAnnotationType | null) {
+  // 关闭调色板
+  closeColorPanel()
+  
   if (annotation?.type === selectedType.value) {
     currentAnnotation.value = null
   } else if (annotation) {
     // 使用记录的颜色设置工具状态
     const selectedColor = toolSelectedColors.value[annotation.type]
+    
+    // 从工具配置中加载透明度和线宽
+    const toolConfig = toolColorsStore.value[annotation.type]
+    if (toolConfig) {
+      opacity.value = toolConfig.opacity
+      strokeWidth.value = toolConfig.strokeWidth
+    }
+    
     const annotationWithColor = {
       ...annotation,
-      style: { ...annotation.style, color: selectedColor }
+      style: { 
+        ...annotation.style, 
+        color: selectedColor,
+        opacity: opacity.value / 100,
+        strokeWidth: strokeWidth.value
+      }
     }
     currentAnnotation.value = annotationWithColor
   }
@@ -400,6 +489,7 @@ function handleAdd(signatureDataUrl: string, annotation: IAnnotationType) {
 }
 
 function handleColorChange(color: string) {
+
   if (!currentAnnotation.value) return
   
   // 记录该工具的选中颜色
@@ -424,15 +514,32 @@ function updateToolColor(colorIndex: number, newColor: string) {
   if (!currentAnnotation.value) return
   
   // 更新存储中的颜色
-  const currentColors = [...toolColorsStore.value[currentAnnotation.value.type]]
-  currentColors[colorIndex] = newColor
-  toolColorsStore.value[currentAnnotation.value.type] = currentColors
+  const toolType = currentAnnotation.value.type
+  if (toolColorsStore.value[toolType]) {
+    const currentColors = [...toolColorsStore.value[toolType].colors]
+    currentColors[colorIndex] = newColor
+    toolColorsStore.value[toolType].colors = currentColors
+  }
   
   // 更新当前工具的颜色
   handleColorChange(newColor)
 }
 
 // 颜色相关方法
+function toggleColorPanel(index: number) {
+  if (showColorPanel.value && currentColorIndex.value === index) {
+    showColorPanel.value = false
+  } else {
+    showColorPanel.value = true
+    currentColorIndex.value = index
+  }
+}
+
+function closeColorPanel() {
+  showColorPanel.value = false
+  currentColorIndex.value = -1
+}
+
 function handleCustomColorAdd(toolType: number | undefined, color: string) {
   if (!toolType) return
   
@@ -480,6 +587,16 @@ function handleOpacityChange(value: number) {
   opacity.value = value
   // 实时更新当前注释的透明度
   if (currentAnnotation.value) {
+    const toolType = currentAnnotation.value.type
+    
+    // 保存到工具配置中
+    if (toolColorsStore.value[toolType]) {
+      toolColorsStore.value[toolType].opacity = value
+    }
+    
+    // 保存到统一数据管理中
+    setToolOpacity(toolType, value)
+    
     const updatedAnnotation: IAnnotationType = {
       ...currentAnnotation.value,
       style: { ...currentAnnotation.value.style, opacity: value / 100 }
@@ -502,6 +619,16 @@ function handleOpacityChange(value: number) {
 function handleStrokeWidthChange(value: number) {
   strokeWidth.value = value
   if (currentAnnotation.value) {
+    const toolType = currentAnnotation.value.type
+    
+    // 保存到工具配置中
+    if (toolColorsStore.value[toolType]) {
+      toolColorsStore.value[toolType].strokeWidth = value
+    }
+    
+    // 保存到统一数据管理中
+    setToolStrokeWidth(toolType, value)
+    
     const updatedAnnotation: IAnnotationType = {
       ...currentAnnotation.value,
       style: { ...currentAnnotation.value.style, strokeWidth: value }
@@ -561,6 +688,7 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
   position: relative; /* 确保不会覆盖其他元素 */
   z-index: 1; /* 较低的z-index */
   pointer-events: auto; /* 确保点击事件正常 */
+  overflow: visible; /* 允许子元素溢出 */
 }
 
 .annotate-toolbar {
@@ -661,6 +789,7 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
   .color-tool-container {
     display: flex;
     align-items: center;
+    position: relative; /* 为下拉面板提供定位基准 */
     
     .color-preset {
       width: 20px;
@@ -724,6 +853,20 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
         line-height: 1;
       }
     }
+    
+    /* 自定义下拉面板样式 */
+    .color-panel-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 2000;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      padding: 8px 12px;
+      margin-top: 4px;
+    }
   }
 }
 
@@ -786,7 +929,7 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
         }
         
         &.selected {
-          border: 2px solid #1976d2;
+          border: 1px solid #000000;
           box-shadow: 0 0 4px rgba(25, 118, 210, 0.5);
         }
       }
