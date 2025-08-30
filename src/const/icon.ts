@@ -438,6 +438,18 @@ export const createColorableIcon = (annotationType: number) => (color: string) =
           d: 'M9.8 9.5l-6.57 6.57l.7.7c-.53.47-1.04 1.01-1.55 1.52c-.78.79-.78 2.05 0 2.83s2.04.78 2.83 0c.51-.49 1.04-1.04 1.52-1.54l.7.69L14 13.7z'
         })
       ])
+
+    case 0:
+        return h('svg', {
+            viewBox: '0 0 320 512',
+            style: { height: '14px', width: '14px' }
+            }, [
+            h('path', {
+                fill: 'currentColor',
+                d: 'M0 55.2V426c0 12.2 9.9 22 22 22c6.3 0 12.4-2.7 16.6-7.5L121.2 346l58.1 116.3c7.9 15.8 27.1 22.2 42.9 14.3s22.2-27.1 14.3-42.9L179.8 320H297.9c12.2 0 22.1-9.9 22.1-22.1c0-6.3-2.7-12.3-7.4-16.5L38.6 37.9C34.3 34.1 28.9 32 23.2 32C10.4 32 0 42.4 0 55.2z'
+                }
+            )
+        ])
     
     default:
       return h('div', { style: { color: color, fontSize: '14px' } }, '●')

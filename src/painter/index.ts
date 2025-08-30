@@ -47,7 +47,7 @@ export class Painter {
     private transform: Transform // 转换器
     private tempDataTransfer: string | null | undefined // 临时数据传输
     public readonly setDefaultMode: () => void // 设置默认模式的函数引用
-    public readonly onWebSelectionSelected: (range: Range | null) => void
+    public readonly onWebSelectionSelected: (range: Range | null, isOnExistingAnnotation?: boolean) => void
     public readonly onStoreAdd: (annotationStore: IAnnotationStore, isOriginal: boolean, currentAnnotation: IAnnotationType) => void
     public readonly onStoreDelete: (id: string) => void
     public readonly onAnnotationSelected: (annotationStore: IAnnotationStore, isClick: boolean, selectorRect: IRect) => void
@@ -78,7 +78,7 @@ export class Painter {
         PDFViewerApplication: PDFViewerApplication
         PDFJS_EventBus: EventBus
         setDefaultMode: () => void
-        onWebSelectionSelected: (range: Range | null) => void
+        onWebSelectionSelected: (range: Range | null, isOnExistingAnnotation?: boolean) => void
         onStoreAdd: (annotationStore: IAnnotationStore, isOriginal: boolean, currentAnnotation: IAnnotationType) => void
         onStoreDelete: (id: string) => void
         onAnnotationSelected: (annotationStore: IAnnotationStore, isClick: boolean, selectorRect: IRect) => void
@@ -135,8 +135,8 @@ export class Painter {
         })
         this.webSelection = new WebSelection({
             // 初始化 WebSelection 实例
-            onSelect: range => {
-                this.onWebSelectionSelected(range) // 总是调用，包括range为null的情况
+            onSelect: (range, isOnExistingAnnotation) => {
+                this.onWebSelectionSelected(range, isOnExistingAnnotation) // 传递是否在现有注释上的标志
             },
             onHighlight: selection => {
                 Object.keys(selection).forEach(key => {
@@ -435,6 +435,13 @@ export class Painter {
             // 禁用自动注释时，清除回调
             this.webSelection.onAutoAnnotate = undefined
         }
+    }
+
+    /**
+     * @description 设置View模式
+     */
+    public setViewMode(isViewMode: boolean) {
+        this.webSelection.setViewMode(isViewMode)
     }
 
     public activate(annotation: IAnnotationType | null, dataTransfer: string | null): void {

@@ -5,6 +5,46 @@
 格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
 并且此项目遵循 [语义化版本控制](https://semver.org/spec/v2.0.0.html)。
 
+## [2.4.0] - 2025-08-29
+
+### 🎉 新增功能
+- ✅ **文本选择工具栏增强**: 为popbar.vue添加颜色选择和透明度控制功能
+  - 新增快速颜色选择器：6种预设颜色供快速选择
+  - 新增透明度滑块：10%-100%范围调节，实时预览效果
+  - 新增样式回调系统：支持实时传递颜色和透明度变化
+  - 优化界面布局：颜色按钮采用圆形设计，透明度滑块带百分比显示
+
+### 🐛 重大修复
+- ✅ **ColorPanel组件显示修复**: 解决颜色网格和自定义颜色区域不显示的关键问题
+  - **关键修复** CSS类名不匹配：`.color-panel` → `.universal-color-panel`
+  - **补充修复** 添加缺失的CSS样式类：
+    - `.custom-colors` - 自定义颜色容器样式
+    - `.add-custom-btn` / `.delete-custom-btn` - 添加/删除按钮样式
+    - `.custom-color-cell` - 自定义颜色单元格样式
+  - **效果**: 颜色网格4行完整显示，自定义颜色区域正常工作
+
+- ✅ **高亮工具功能修复**: 解决CustomToolbar中highlight颜色透明度修改后划词失效问题
+  - **问题根因**: 错误启用透明度编辑破坏了highlight正常工作流程
+  - **解决方案**: 恢复highlight配置到稳定状态
+    - `definitions.ts`: 保持`styleEditable.opacity: false`
+    - `editor_highlight.ts`: 恢复固定透明度值`opacity: 0.5`
+  - **效果**: highlight工具恢复正常，选词后可正确显示黄色高亮
+
+### ✨ 功能增强  
+- ✅ **文本注释透明度支持**: 为下划线、删除线、波浪线工具启用透明度调节功能
+  - **配置更新** `src/const/definitions.ts` - 批量启用透明度编辑权限
+    - `underline`: `styleEditable.opacity: false` → `true`
+    - `strikeout`: `styleEditable.opacity: false` → `true`  
+    - `squiggly`: `styleEditable.opacity: false` → `true`
+  - **效果**: 三个文本注释工具现在都支持在CustomToolbar中调节透明度
+
+### 🎨 视觉优化
+- ✅ **ColorPanel界面优化**: 基于用户反馈优化颜色选择器界面
+  - 颜色单元格尺寸调整：24x18px → 15x15px，更紧凑美观
+  - 面板宽度优化：240px → 150px，减少空间占用
+  - 间距优化：颜色行间距3px → 6px，视觉层次更清晰
+  - 透明度控制布局：从横向flex改为块级显示，滑块边距精确调整
+
 ## [2.3.0] - 2025-08-27
 
 ### 🎉 新增功能

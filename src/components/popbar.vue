@@ -17,6 +17,7 @@ const show = ref(false)
 const currentRange = ref<Range | null>(null)
 const selectedColor = ref('#ffff33')
 const opacity = ref(50)
+const isModifyMode = ref(false) // 新增：是否是修改模式
 
 // 获取高亮类型的注释
 const annotations = computed<IAnnotationType[]>(() => {
@@ -29,7 +30,7 @@ const quickColors = ['#ffff33', '#ff6666', '#66ff66', '#66ccff', '#ff9933', '#cc
 
 
 // 打开 Popbar - 使用选择区域的实际边界矩形
-const open = async (range: Range | null) => {
+const open = async (range: Range | null, isOnExistingAnnotation: boolean = false) => {
   currentRange.value = range
   
   // 如果 range 为空或 startContainer 和 endContainer 都不是文本节点，隐藏菜单
@@ -39,6 +40,15 @@ const open = async (range: Range | null) => {
   }
 
   show.value = true
+
+  // 根据是否在现有注释上决定显示内容
+  if (isOnExistingAnnotation) {
+    // 在现有注释上时，显示修改工具(调色板)
+    isModifyMode.value = true
+  } else {
+    // 在无注释文字上时，显示常规注释选择工具
+    isModifyMode.value = false
+  }
 
   // 获取选择区域的实际边界矩形
   const rangeRect = range.getBoundingClientRect()
@@ -77,6 +87,7 @@ const open = async (range: Range | null) => {
 const close = () => {
   show.value = false
   currentRange.value = null
+  isModifyMode.value = false // 重置修改模式
 }
 
 // 点击注释按钮
@@ -128,42 +139,76 @@ defineExpose({
     ref="containerRef"
     :class="['CustomPopbar', show ? 'show' : 'hide']"
   >
-    <ul class="buttons">
-      <li v-for="(annotation, index) in annotations" :key="index" @click="handleAnnotationClick(annotation)">
-        <div class="icon">
-          <component :is="annotation.icon" />
+    <!-- 修改模式：显示调色板 -->
+    <template v-if="isModifyMode">
+      <div class="style-controls">
+        <!-- 颜色选择 -->
+        <div class="color-section">
+          <div 
+            v-for="color in quickColors" 
+            :key="color"
+            class="color-button"
+            :style="{ backgroundColor: color }"
+            :class="{ selected: selectedColor === color }"
+            @click="handleColorChange(color)"
+          />
         </div>
-      </li>
-    </ul>
+        
+        <!-- 透明度控制 -->
+        <div class="opacity-section">
+          <span class="opacity-label">{{ opacity }}%</span>
+          <input
+            type="range"
+            :value="opacity"
+            min="10"
+            max="100"
+            step="10"
+            class="opacity-slider"
+            @input="handleOpacityChange(($event.target as HTMLInputElement).valueAsNumber)"
+          />
+        </div>
+      </div>
+    </template>
     
-    <!-- 颜色和透明度控制 -->
-    <div v-if="show" class="style-controls">
-      <!-- 颜色选择 -->
-      <div class="color-section">
-        <div 
-          v-for="color in quickColors" 
-          :key="color"
-          class="color-button"
-          :style="{ backgroundColor: color }"
-          :class="{ selected: selectedColor === color }"
-          @click="handleColorChange(color)"
-        />
-      </div>
+    <!-- 普通模式：显示注释工具 -->
+    <template v-else>
+      <ul class="buttons">
+        <li v-for="(annotation, index) in annotations" :key="index" @click="handleAnnotationClick(annotation)">
+          <div class="icon">
+            <component :is="annotation.icon" />
+          </div>
+        </li>
+      </ul>
       
-      <!-- 透明度控制 -->
-      <div class="opacity-section">
-        <span class="opacity-label">{{ opacity }}%</span>
-        <input
-          type="range"
-          :value="opacity"
-          min="10"
-          max="100"
-          step="10"
-          class="opacity-slider"
-          @input="handleOpacityChange(($event.target as HTMLInputElement).valueAsNumber)"
-        />
+      <!-- 颜色和透明度控制 -->
+      <div v-if="show" class="style-controls">
+        <!-- 颜色选择 -->
+        <div class="color-section">
+          <div 
+            v-for="color in quickColors" 
+            :key="color"
+            class="color-button"
+            :style="{ backgroundColor: color }"
+            :class="{ selected: selectedColor === color }"
+            @click="handleColorChange(color)"
+          />
+        </div>
+        
+        <!-- 透明度控制 -->
+        <div class="opacity-section">
+          <span class="opacity-label">{{ opacity }}%</span>
+          <input
+            type="range"
+            :value="opacity"
+            min="10"
+            max="100"
+            step="10"
+            class="opacity-slider"
+            @input="handleOpacityChange(($event.target as HTMLInputElement).valueAsNumber)"
+          />
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
