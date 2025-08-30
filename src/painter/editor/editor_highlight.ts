@@ -181,9 +181,10 @@ export class EditorHighLight extends Editor {
         const points: number[] = []
         
         // 使用strokeWidth来调节波浪幅度，如果没有设置strokeWidth则使用默认值
-        const strokeWidth = this.currentAnnotation?.style?.strokeWidth || 1
-        const amplitude = (height * 0.2) * strokeWidth // 波浪幅度根据strokeWidth调整
-        const frequency = 4 // 波浪频率，在给定宽度内的波浪数量
+        const strokeWidth = this.currentAnnotation?.style?.strokeWidth || 0.5
+        // const amplitude = (height * 0.2) * strokeWidth // 波浪幅度根据strokeWidth调整
+        const amplitude = height * 0.2 // 波浪幅度根据strokeWidth调整
+        const frequency = width / 10 // 波浪频率，在给定宽度内的波浪数量
         const baseY = y + height + 1 // 基准Y坐标，放在文本下方
         
         // 生成波浪线的点
@@ -198,7 +199,7 @@ export class EditorHighLight extends Editor {
             points,
             stroke: this.currentAnnotation?.style?.color,
             // strokeWidth: Math.max(strokeWidth * 0.5, 0.3), // 线条宽度也根据strokeWidth调整
-            strokeWidth: this.currentAnnotation?.style?.strokeWidth || 1, // 线条宽度也根据strokeWidth调整
+            strokeWidth: strokeWidth, // 线条宽度也根据strokeWidth调整
             hitStrokeWidth: 8,
             lineCap: 'round',
             lineJoin: 'round',

@@ -141,33 +141,6 @@ defineExpose({
   >
     <!-- 修改模式：显示调色板 -->
     <template v-if="isModifyMode">
-      <div class="style-controls">
-        <!-- 颜色选择 -->
-        <div class="color-section">
-          <div 
-            v-for="color in quickColors" 
-            :key="color"
-            class="color-button"
-            :style="{ backgroundColor: color }"
-            :class="{ selected: selectedColor === color }"
-            @click="handleColorChange(color)"
-          />
-        </div>
-        
-        <!-- 透明度控制 -->
-        <div class="opacity-section">
-          <span class="opacity-label">{{ opacity }}%</span>
-          <input
-            type="range"
-            :value="opacity"
-            min="10"
-            max="100"
-            step="10"
-            class="opacity-slider"
-            @input="handleOpacityChange(($event.target as HTMLInputElement).valueAsNumber)"
-          />
-        </div>
-      </div>
     </template>
     
     <!-- 普通模式：显示注释工具 -->
