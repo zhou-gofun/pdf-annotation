@@ -1,145 +1,111 @@
 <template>
-    <a-popover
-      trigger="click"
-      placement="bottom"
-      :arrow="false"
-      v-model:open="isPopoverOpen"
-      overlayClassName="SignaturePop"
-    >
-      <template #content>
-        <div>
-          <ul class="SignaturePop-Container">
-            <li v-for="(s, idx) in signatures" :key="idx">
-              <img :src="s" @click="handleAdd(s)" />
-            </li>
-          </ul>
-          <div class="SignaturePop-Toolbar">
-            <a-button block type="link" @click="openModal" :icon="h(PlusCircleOutlined)">
-              {{ t('toolbar.buttons.createSignature') }}
-            </a-button>
-          </div>
+  <div v-if="inline" class="SignatureInline">
+    <div class="panel">
+      <div class="list">
+        <div v-for="(s, idx) in signatures" :key="idx" class="item">
+          <img :src="s" @click="handleAdd(s)" />
+          <a-button type="text" size="small" @click="removeSignature(idx)">
+            <DeleteOutlined />
+          </a-button>
         </div>
-      </template>
-  
-      <div class="icon">
-        <component :is="annotation.icon" />
       </div>
-      <!-- <div class="name">{{ t(`annotations.${annotation.name}`) }}</div> -->
-    </a-popover>
-  
-    <a-modal
-      v-model:open="isModalOpen"
-      :title="t('toolbar.buttons.createSignature')"
-      :okText="t('normal.ok')"
-      :cancelText="t('normal.cancel')"
-      destroyOnClose
-      :okButtonProps="{ disabled: isOKButtonDisabled }"
-      @ok="handleOk"
-    >
+      <a-button block class="add-btn" @click="openModal">{{ t('toolbar.buttons.createSignature') }}</a-button>
+    </div>
+    <a-modal v-model:open="isModalOpen" :title="t('toolbar.buttons.createSignature')" :okText="t('normal.ok')" :cancelText="t('normal.cancel')" destroyOnClose :okButtonProps="{ disabled: isOKButtonDisabled }" @ok="handleOk">
       <div>
         <div class="SignatureTool-Header">
-          <a-radio-group
-            v-model:value="signatureType"
-            button-style="solid"
-          >
+          <a-radio-group v-model:value="signatureType" button-style="solid">
             <a-radio-button value="Draw">{{ t('normal.draw') }}</a-radio-button>
             <a-radio-button value="Enter">{{ t('normal.enter') }}</a-radio-button>
             <a-radio-button value="Upload">{{ t('normal.upload') }}</a-radio-button>
           </a-radio-group>
         </div>
-  
         <div class="SignatureTool-Container" :style="{ width: defaultOptions.signature.WIDTH + 'px' }">
-          <!-- Enter 模式 -->
-          <input
-            v-if="signatureType === 'Enter'"
-            autofocus
-            type="text"
-            v-model="typedSignature"
-            :placeholder="t('toolbar.message.signatureArea')"
-            :style="{
-              height: defaultOptions.signature.HEIGHT + 'px',
-              width: defaultOptions.signature.WIDTH / 1.1 + 'px',
-              color: currentColor,
-              fontFamily: fontFamily,
-              fontSize: BASE_FONT_SIZE + 'px',
-              lineHeight: BASE_FONT_SIZE + 'px'
-            }"
-          />
-  
-          <!-- Draw 模式 -->
+          <input v-if="signatureType === 'Enter'" autofocus type="text" v-model="typedSignature" :placeholder="t('toolbar.message.signatureArea')" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH / 1.1 + 'px', color: currentColor, fontFamily: fontFamily, fontSize: BASE_FONT_SIZE + 'px', lineHeight: BASE_FONT_SIZE + 'px' }" />
           <div v-else-if="signatureType === 'Draw'">
             <div class="SignatureTool-Container-info">{{ t('toolbar.message.signatureArea') }}</div>
-            <div
-              ref="containerRef"
-              :style="{
-                height: defaultOptions.signature.HEIGHT + 'px',
-                width: defaultOptions.signature.WIDTH + 'px'
-              }"
-            />
+            <div ref="containerRef" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }" />
           </div>
-  
-          <!-- Upload 模式 -->
-          <div v-else-if="signatureType === 'Upload'"
-            :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }">
-            <div
-              v-if="uploadedImageUrl"
-              class="SignatureTool-ImagePreview"
-              :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }"
-            >
-              <img :src="uploadedImageUrl" alt="preview" />
-            </div>
-            <a-upload-dragger
-              v-else
-              :accept="defaultOptions.signature.ACCEPT"
-              :beforeUpload="() => false"
-              :showUploadList="false"
-              :multiple="false"
-              @change="handleUploadChange"
-              :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }"
-            >
+          <div v-else-if="signatureType === 'Upload'" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }">
+            <div v-if="uploadedImageUrl" class="SignatureTool-ImagePreview" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }"><img :src="uploadedImageUrl" alt="preview" /></div>
+            <a-upload-dragger v-else :accept="defaultOptions.signature.ACCEPT" :beforeUpload="() => false" :showUploadList="false" :multiple="false" @change="handleUploadChange" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }">
               <p class="ant-upload-drag-icon"></p>
               <p class="ant-upload-text">{{ t('toolbar.message.uploadArea') }}</p>
-              <p class="ant-upload-hint">
-                {{ t('toolbar.message.uploadHint', { format: defaultOptions.signature.ACCEPT, maxSize: formatFileSize(defaultOptions.signature.MAX_SIZE) }) }}
-              </p>
+              <p class="ant-upload-hint">{{ t('toolbar.message.uploadHint', { format: defaultOptions.signature.ACCEPT, maxSize: formatFileSize(defaultOptions.signature.MAX_SIZE) }) }}</p>
             </a-upload-dragger>
           </div>
         </div>
-  
-        <!-- 工具栏 -->
         <div class="SignatureTool-Toolbar" :style="{ width: defaultOptions.signature.WIDTH + 'px' }">
           <div class="colorPalette">
             <template v-if="signatureType !== 'Upload'">
-              <div
-                v-for="color in defaultOptions.signature.COLORS"
-                :key="color"
-                @click="changeColor(color)"
-                :class="['cell', { active: color === currentColor }]"
-              >
-                <span :style="{ backgroundColor: color }" />
-              </div>
+              <div v-for="color in defaultOptions.signature.COLORS" :key="color" @click="changeColor(color)" :class="['cell', { active: color === currentColor }]"><span :style="{ backgroundColor: color }" /></div>
             </template>
-  
-            <a-select
-              v-if="signatureType === 'Enter'"
-              size="small"
-              style="width: 160px"
-              v-model:value="fontFamily"
-              :options="defaultOptions.handwritingFontList"
-              @change="loadFont"
-            />
+            <a-select v-if="signatureType === 'Enter'" size="small" style="width: 160px" v-model:value="fontFamily" :options="defaultOptions.handwritingFontList" @change="loadFont" />
           </div>
           <div class="clear" @click="handleClear">{{ t('normal.clear') }}</div>
         </div>
       </div>
     </a-modal>
-  </template>
+  </div>
+  <a-popover v-else trigger="click" placement="bottom" :arrow="false" v-model:open="isPopoverOpen" overlayClassName="SignaturePop">
+    <template #content>
+      <div>
+        <ul class="SignaturePop-Container">
+          <li v-for="(s, idx) in signatures" :key="idx">
+            <img :src="s" @click="handleAdd(s)" />
+          </li>
+        </ul>
+        <div class="SignaturePop-Toolbar">
+          <a-button block type="link" @click="openModal" :icon="h(PlusCircleOutlined)">{{ t('toolbar.buttons.createSignature') }}</a-button>
+        </div>
+      </div>
+    </template>
+    <div class="icon">
+      <component :is="annotation.icon" />
+    </div>
+  </a-popover>
+  <a-modal v-if="!inline" v-model:open="isModalOpen" :title="t('toolbar.buttons.createSignature')" :okText="t('normal.ok')" :cancelText="t('normal.cancel')" destroyOnClose :okButtonProps="{ disabled: isOKButtonDisabled }" @ok="handleOk">
+    <div>
+      <div class="SignatureTool-Header">
+        <a-radio-group v-model:value="signatureType" button-style="solid">
+          <a-radio-button value="Draw">{{ t('normal.draw') }}</a-radio-button>
+          <a-radio-button value="Enter">{{ t('normal.enter') }}</a-radio-button>
+          <a-radio-button value="Upload">{{ t('normal.upload') }}</a-radio-button>
+        </a-radio-group>
+      </div>
+      <div class="SignatureTool-Container" :style="{ width: defaultOptions.signature.WIDTH + 'px' }">
+        <input v-if="signatureType === 'Enter'" autofocus type="text" v-model="typedSignature" :placeholder="t('toolbar.message.signatureArea')" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH / 1.1 + 'px', color: currentColor, fontFamily: fontFamily, fontSize: BASE_FONT_SIZE + 'px', lineHeight: BASE_FONT_SIZE + 'px' }" />
+        <div v-else-if="signatureType === 'Draw'">
+          <div class="SignatureTool-Container-info">{{ t('toolbar.message.signatureArea') }}</div>
+          <div ref="containerRef" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }" />
+        </div>
+        <div v-else-if="signatureType === 'Upload'" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }">
+          <div v-if="uploadedImageUrl" class="SignatureTool-ImagePreview" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }"><img :src="uploadedImageUrl" alt="preview" /></div>
+          <a-upload-dragger v-else :accept="defaultOptions.signature.ACCEPT" :beforeUpload="() => false" :showUploadList="false" :multiple="false" @change="handleUploadChange" :style="{ height: defaultOptions.signature.HEIGHT + 'px', width: defaultOptions.signature.WIDTH + 'px' }">
+            <p class="ant-upload-drag-icon"></p>
+            <p class="ant-upload-text">{{ t('toolbar.message.uploadArea') }}</p>
+            <p class="ant-upload-hint">{{ t('toolbar.message.uploadHint', { format: defaultOptions.signature.ACCEPT, maxSize: formatFileSize(defaultOptions.signature.MAX_SIZE) }) }}</p>
+          </a-upload-dragger>
+        </div>
+      </div>
+      <div class="SignatureTool-Toolbar" :style="{ width: defaultOptions.signature.WIDTH + 'px' }">
+        <div class="colorPalette">
+          <template v-if="signatureType !== 'Upload'">
+            <div v-for="color in defaultOptions.signature.COLORS" :key="color" @click="changeColor(color)" :class="['cell', { active: color === currentColor }]"><span :style="{ backgroundColor: color }" /></div>
+          </template>
+          <a-select v-if="signatureType === 'Enter'" size="small" style="width: 160px" v-model:value="fontFamily" :options="defaultOptions.handwritingFontList" @change="loadFont" />
+        </div>
+        <div class="clear" @click="handleClear">{{ t('normal.clear') }}</div>
+      </div>
+    </div>
+  </a-modal>
+</template>
   
   <script setup lang="ts">
-  import { ref, watch, nextTick, h } from 'vue'
+  import { ref, watch, nextTick, h, onMounted } from 'vue'
   import { useI18n } from 'vue-i18n'
   import Konva from 'konva'
-  import { PlusCircleOutlined } from '@ant-design/icons-vue'
+  import { PlusCircleOutlined, DeleteOutlined } from '@ant-design/icons-vue'
   import { defaultOptions } from '../../const/default_options'
   import type { IAnnotationType } from '../../const/definitions'
   import { formatFileSize } from '../../utils/utils'
@@ -151,8 +117,9 @@
   
   interface Props {
     annotation: IAnnotationType
+    inline?: boolean
   }
-  const { annotation } = defineProps<Props>()
+  const { annotation, inline = false } = defineProps<Props>()
   
   const emit = defineEmits<{
     (e: 'add', dataUrl: string): void
@@ -167,6 +134,8 @@
   
   const isPopoverOpen = ref(false)
   const isModalOpen = ref(false)
+  // removed panel toggle in inline mode
+  const selectedSignature = ref<string | null>(null)
   const currentColor = ref(colorRef.value)
   const isOKButtonDisabled = ref(true)
   const signatures = ref<string[]>([])
@@ -180,6 +149,15 @@
   function handleAdd(signature: string) {
     emit('add', signature)
     isPopoverOpen.value = false
+    selectedSignature.value = signature
+  }
+  function removeSignature(idx: number) {
+    const removed = signatures.value[idx]
+    signatures.value.splice(idx, 1)
+    if (selectedSignature.value === removed) {
+      selectedSignature.value = signatures.value[0] || null
+    }
+    try { localStorage.setItem('toolbar.createdSignatures', JSON.stringify(signatures.value)) } catch {}
   }
   function openModal() {
     isPopoverOpen.value = false
@@ -223,6 +201,7 @@
       const dataUrl = generateTypedSignatureImage()
       if (dataUrl) {
         signatures.value.push(dataUrl)
+        try { localStorage.setItem('toolbar.createdSignatures', JSON.stringify(signatures.value)) } catch {}
         handleAdd(dataUrl)
         isModalOpen.value = false
       }
@@ -230,6 +209,7 @@
       const dataUrl = konvaStageRef.value?.toDataURL()
       if (dataUrl) {
         signatures.value.push(dataUrl)
+        try { localStorage.setItem('toolbar.createdSignatures', JSON.stringify(signatures.value)) } catch {}
         handleAdd(dataUrl)
         isModalOpen.value = false
       }
@@ -332,9 +312,9 @@
     typedSignature.value = ''
     uploadedImageUrl.value = null
     isOKButtonDisabled.value = true
-    if (val === 'Draw' && isModalOpen.value) {
+    if (val === 'Draw') {
       await nextTick()
-      setTimeout(() => initializeKonvaStage(), 300)
+      initializeKonvaStage()
     } else {
       konvaStageRef.value?.destroy()
       konvaStageRef.value = null
@@ -345,15 +325,72 @@
       isOKButtonDisabled.value = val.trim().length === 0
     }
   })
-  watch(isModalOpen, val => {
+  watch(isModalOpen, async val => {
     if (val) {
-      loadFont(fontFamily.value)
       signatureType.value = defaultOptions.signature.TYPE
+      await nextTick()
+      if (signatureType.value === 'Draw') {
+        initializeKonvaStage()
+      } else {
+        loadFont(fontFamily.value)
+      }
     }
   })
-  </script>
+  onMounted(async () => {
+    if (inline) {
+      signatureType.value = defaultOptions.signature.TYPE
+      await nextTick()
+      if (signatureType.value === 'Draw') {
+        initializeKonvaStage()
+      } else {
+        loadFont(fontFamily.value)
+      }
+      try {
+        const saved = JSON.parse(localStorage.getItem('toolbar.createdSignatures') || '[]')
+        if (Array.isArray(saved)) signatures.value = saved
+      } catch {}
+    }
+  })
+</script>
   
 <style lang="scss" scoped>
 @use './index.scss' as *;
+.SignatureInline {
+  width: 280px;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 8px;
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef5e8;
+      color: #4b7f2f;
+      border: 1px solid #cdd9bf;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-weight: 600;
+      img { height: 22px; }
+    }
+  }
+  .panel {
+    border-top: 1px solid #eaeaea;
+    padding: 8px;
+    .list {
+      max-height: 140px;
+      overflow: auto;
+      display: grid;
+      gap: 8px;
+    }
+    .item { display: flex; align-items: center; justify-content: space-between; background: #f5f7fa; border-radius: 6px; padding: 6px 8px; img { height: 26px; } }
+    .add-btn { margin-top: 8px; }
+  }
+}
 </style>
   

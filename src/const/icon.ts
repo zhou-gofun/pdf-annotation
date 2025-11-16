@@ -439,6 +439,45 @@ export const createColorableIcon = (annotationType: number) => (color: string) =
         })
       ])
 
+    case 10: // Annotation.SIGNATURE - 返回默认颜色图标
+      return SignatureSvg()
+
+    case 11: // Annotation.STAMP - 返回默认颜色图标
+      return StampSvg()
+
+    case 6: // Annotation.RECTANGLE
+      return h('svg', {
+        viewBox: '0 0 512 512',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: color,
+          d: 'M384 80c8.8 0 16 7.2 16 16V416c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V96c0-8.8 7.2-16 16-16H384zM64 32C28.7 32 0 60.7 0 96V416c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64H64z'
+        })
+      ])
+
+    case 7: // Annotation.CIRCLE
+      return h('svg', {
+        viewBox: '0 0 512 512',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: color,
+          d: 'M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256z'
+        })
+      ])
+
+    case 13: // Annotation.ARROW
+      return h('svg', {
+        viewBox: '0 0 1024 1024',
+        style: { height: '14px', width: '14px' }
+      }, [
+        h('path', {
+          fill: color,
+          d: 'M820.35259846 337.71374951V646.0663464h134.06634641V109.8009592h-536.2653872v134.06634641h308.35259689L109.8009592 860.57250255l93.84644234 93.84644232 616.70519692-616.70519536z'
+        })
+      ])
+
     case 0:
         return h('svg', {
             viewBox: '0 0 320 512',
