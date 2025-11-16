@@ -171,6 +171,9 @@ class PdfjsAnnotationExtension {
   private init() {
     this.addCustomStyle()
     this.bindPdfjsEvents()
+    // 提前设定默认类目为 annotate，并展开二级菜单，使初次渲染即显示
+    this.selectedCategoryRef.value = 'annotate'
+    this.showSecondaryToolbar()
     this.setupPrimaryMenuButtons()
     this.renderToolbar()
     this.renderPopBar()
@@ -276,9 +279,9 @@ class PdfjsAnnotationExtension {
   private setupPrimaryMenuButtons(): void {
     // 等待DOM加载后设置事件监听器
     setTimeout(() => {
-      // 默认选中View按钮，隐藏二级菜单
-      this.selectedCategoryRef.value = 'view'
-      this.hideSecondaryToolbar()
+      // 默认选中 Annotate，显示二级菜单
+      this.selectedCategoryRef.value = 'annotate'
+      this.showSecondaryToolbar()
       // 初始化时激活选择工具，允许用户选择和操作已有的注释
       const selectTool = annotationDefinitions.find(tool => tool.type === Annotation.SELECT)
       if (selectTool) {
@@ -287,7 +290,16 @@ class PdfjsAnnotationExtension {
       
       // 设置一级菜单按钮事件
       const primaryMenuButtons = document.querySelectorAll('.primaryMenuButton')
+      const annotateButton = document.querySelector('.primaryMenuButton[data-category="annotate"]') as HTMLElement | null
+      if (annotateButton) {
+        annotateButton.classList.add('active')
+      }
       primaryMenuButtons.forEach(button => {
+        const category = button.getAttribute('data-category')
+        if (category && category !== 'annotate' && category !== 'shapes') {
+          (button as HTMLElement).style.display = 'none'
+          return
+        }
         button.addEventListener('click', (event) => {
           const target = event.currentTarget as HTMLElement
           const category = target.getAttribute('data-category')
@@ -349,14 +361,7 @@ class PdfjsAnnotationExtension {
     }, 100)
   }
 
-  private hideSecondaryToolbar(): void {
-    const customToolbar = document.querySelector('.CustomToolbar') as HTMLElement
-    if (customToolbar) {
-      customToolbar.style.display = 'none'
-    }
-    // 页面向上填充
-    document.body.classList.add('PdfjsAnnotationExtension_SecondaryToolbar_hidden')
-  }
+  // private hideSecondaryToolbar(): void {}
 
   private showSecondaryToolbar(): void {
     const customToolbar = document.querySelector('.CustomToolbar') as HTMLElement

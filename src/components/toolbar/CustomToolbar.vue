@@ -109,67 +109,184 @@
       </div>
     </div>
     
-    <!-- 其他分类的工具栏保持原有逻辑 -->
-    <div v-else-if="selectedCategory && selectedCategory !== 'view'" class="other-toolbar">
-      <div class="annotation-tools">
-        <div
-          v-for="annotation in annotations"
-          :key="annotation.type"
-          :class="['tool-item', { selected: annotation.type === selectedType }]"
-          :title="t(`annotations.${annotation.name}`)"
-          @click="onAnnotationClick(annotation)"
-        >
-          <template v-if="annotation.type === Annotation.STAMP">
-            <StampTool
-              :userName="userName"
-              :annotation="annotation"
-              @add="signatureDataUrl => handleAdd(signatureDataUrl, annotation)"
-            />
-          </template>
-          <template v-else-if="annotation.type === Annotation.SIGNATURE">
-            <SignatureTool
-              :annotation="annotation"
-              @add="signatureDataUrl => handleAdd(signatureDataUrl, annotation)"
-            />
+    <!-- Shapes/Measure 等分类采用 annotate 风格 -->
+    <div v-else-if="selectedCategory && selectedCategory !== 'view' && selectedCategory !== 'insert' && selectedCategory !== 'measure'" class="annotate-toolbar">
+      <div class="toolbar-content-center">
+        <div class="annotation-tools">
+          <div
+            v-for="annotation in annotations"
+            :key="annotation.type"
+            :class="['tool-item', { selected: annotation.type === selectedType }]"
+            :title="t(`annotations.${annotation.name}`)"
+            @click="onAnnotationClick(annotation)"
+          >
+            <div class="icon">
+              <template v-if="annotation.type === selectedType">
+                <ColorableIcon 
+                  :color="getCurrentToolColor(annotation)" 
+                  :annotationType="annotation.type" 
+                />
+              </template>
+              <template v-else>
+                <component :is="annotation.icon" />
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="color-section">
+          <template v-if="currentAnnotation && currentAnnotation.styleEditable?.color">
+            <div
+              v-for="(color, index) in getToolColors(currentAnnotation)"
+              :key="color"
+              class="color-tool-container"
+            >
+              <div
+                :class="['color-preset', { active: currentAnnotation?.style?.color === color }]"
+                @click.stop="handleColorChange(color); closeColorPanel()"
+              >
+                <ColorableIcon :color="color" :annotationType="currentAnnotation.type" />
+              </div>
+              <div 
+                class="color-dropdown-trigger"
+                :class="{ invisible: currentAnnotation?.style?.color !== color }"
+                @click.stop="toggleColorPanel(index)"
+              >
+                <div class="dropdown-arrow">▼</div>
+              </div>
+              <div 
+                v-if="showColorPanel && currentColorIndex === index"
+                class="color-panel-dropdown"
+                @click.stop
+              >
+                <ColorPanel
+                  :selected-color="color"
+                  :opacity="opacity"
+                  :stroke-width="strokeWidth"
+                  :show-opacity="true"
+                  :show-stroke-width="currentAnnotation?.styleEditable?.strokeWidth || false"
+                  :stroke-width-label="getStrokeWidthLabel(currentAnnotation?.type)"
+                  :stroke-width-min="0.5"
+                  :stroke-width-max="20"
+                  :stroke-width-step="0.5"
+                  :tool-type="currentAnnotation?.type"
+                  @color-change="(newColor) => updateToolColor(index, newColor)"
+                  @opacity-change="handleOpacityChange"
+                  @stroke-width-change="handleStrokeWidthChange"
+                  @custom-color-add="(newColor) => handleCustomColorAdd(currentAnnotation?.type, newColor)"
+                  @custom-color-delete="(colorToDelete) => handleCustomColorDelete(currentAnnotation?.type, colorToDelete)"
+                />
+              </div>
+            </div>
           </template>
           <template v-else>
-            <div class="icon">
-              <component :is="annotation.icon" />
-            </div>
+            <div class="no-preset-message">没有预设</div>
           </template>
         </div>
-      </div>
 
-      <!-- 颜色选择 -->
-      <Popover trigger="click" placement="bottom" :arrow="false">
-        <template #content>
-          <div class="color-picker-panel">
-            <div class="color-presets">
-              <div
-                v-for="color in defaultOptions.colors"
-                :key="color"
-                class="color-preset"
-                :style="{ backgroundColor: color }"
-                :class="{ active: currentAnnotation?.style?.color === color }"
-                @click="handleColorChange(color)"
-              />
-            </div>
-            <div class="custom-color">
-              <input
-                type="color"
-                :value="currentAnnotation?.style?.color || defaultOptions.setting.COLOR"
-                @input="(e) => handleColorChange((e.target as HTMLInputElement).value)"
-              />
-              <span>{{ t('normal.customColor') }}</span>
-            </div>
+        <div class="toolbar-separator"></div>
+
+        <div class="action-tools">
+          <div class="tool-item" :title="t('normal.undo')" @click="handleUndo">
+            <div class="icon">↶</div>
           </div>
-        </template>
-        <div :class="['tool-item', { disabled: isColorDisabled }]" :title="t('normal.color')">
-          <div class="icon">
-            <PaletteIcon :style="{ color: currentAnnotation?.style?.color }" />
+          <div class="tool-item" :title="t('normal.redo')" @click="handleRedo">
+            <div class="icon">↷</div>
+          </div>
+          <div class="tool-item eraser" :title="t('normal.eraser')" @click="handleEraser">
+            <div class="icon">
+              <EraserIcon />
+            </div>
           </div>
         </div>
-      </Popover>
+      </div>
+    </div>
+
+    <!-- Insert 分类：颜色面板替换为已创建签名/印章选择器 -->
+    <div v-else-if="selectedCategory === 'insert' && false" class="annotate-toolbar">
+      <div class="toolbar-content-center">
+        <div class="annotation-tools">
+          <div
+            v-for="annotation in annotations"
+            :key="annotation.type"
+            :class="['tool-item', { selected: annotation.type === selectedType }]"
+            :title="t(`annotations.${annotation.name}`)"
+            @click="onAnnotationClick(annotation)"
+          >
+            <div class="icon">
+              <template v-if="annotation.type === selectedType">
+                <ColorableIcon 
+                  :color="getCurrentToolColor(annotation)" 
+                  :annotationType="annotation.type" 
+                />
+              </template>
+              <template v-else>
+                <component :is="annotation.icon" />
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <!-- 下拉选择器区域（替代配色面板） -->
+        <div class="color-section">
+          <template v-if="currentAnnotation && ((currentAnnotation as IAnnotationType).type === Annotation.SIGNATURE || (currentAnnotation as IAnnotationType).type === Annotation.STAMP)">
+            <a-dropdown :trigger="['click']" :overlayClassName="'insert-dropdown'" :destroyPopupOnHide="false">
+              <div class="ant-dropdown-link insert-trigger">
+                <div class="insert-trigger-left">
+                  <template v-if="selectedInsertItem">
+                    <img :src="selectedInsertItem as string" alt="selected" class="insert-trigger-thumb" />
+                  </template>
+                  <template v-else>
+                    {{ (currentAnnotation as IAnnotationType).type === Annotation.SIGNATURE ? t('toolbar.buttons.createSignature') : t('toolbar.buttons.createStamp') }}
+                  </template>
+                </div>
+                <DownOutlined class="insert-trigger-arrow" />
+              </div>
+              <template #overlay>
+                <div class="insert-dropdown-overlay" @click.stop @mousedown.stop @mouseup.stop @keydown.stop>
+                  <SignatureTool
+                    v-if="(currentAnnotation as IAnnotationType).type === Annotation.SIGNATURE"
+                    :annotation="currentAnnotation as IAnnotationType"
+                    inline
+                    @add="onInlineAdd"
+                  />
+                  <StampTool
+                    v-else-if="(currentAnnotation as IAnnotationType).type === Annotation.STAMP"
+                    :annotation="currentAnnotation as IAnnotationType"
+                    :userName="userName"
+                    inline
+                    @add="onInlineAdd"
+                  />
+                </div>
+              </template>
+            </a-dropdown>
+            <!-- 清理过大预览：移除下拉后的大图展示，缩略图仅在触发器中展示 -->
+          </template>
+          <template v-else>
+            <div class="no-preset-message">没有预设</div>
+          </template>
+        </div>
+
+        <div class="toolbar-separator"></div>
+
+        <div class="action-tools">
+          <div class="tool-item" :title="t('normal.undo')" @click="handleUndo">
+            <div class="icon">↶</div>
+          </div>
+          <div class="tool-item" :title="t('normal.redo')" @click="handleRedo">
+            <div class="icon">↷</div>
+          </div>
+          <div class="tool-item eraser" :title="t('normal.eraser')" @click="handleEraser">
+            <div class="icon">
+              <EraserIcon />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 隐藏的颜色输入框 -->
@@ -187,9 +304,9 @@
 import { ref, computed, watch, defineExpose, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
-  message,
-  Popover 
+  message
 } from 'ant-design-vue'
+import { DownOutlined } from '@ant-design/icons-vue'
 import {
   annotationDefinitions,
   Annotation,
@@ -198,9 +315,9 @@ import {
   type IAnnotationType,
   PdfjsAnnotationEditorType
 } from '../../const/definitions'
+import { defaultOptions } from '../../const/default_options'
 import { 
   // ExportIcon, 
-  PaletteIcon,
   EraserIcon,
   createColorableIcon,
   // SaveIcon, 
@@ -214,7 +331,7 @@ import {
 } from '../../const/icon'
 import SignatureTool from './signature.vue'
 import StampTool from './stamp.vue'
-import { defaultOptions } from '../../const/default_options'
+// removed unused defaultOptions
 import ColorPanel from '../common/ColorPanel.vue'
 import { useColorPalette } from '../../store/colorPalette'
 // import { FilePdfOutlined } from '@ant-design/icons-vue'
@@ -254,6 +371,10 @@ const strokeWidth = ref(1) // 改回默认值1，具体值会在选择工具时�
 const colorInput = ref<HTMLInputElement | null>(null)
 const showColorPanel = ref(false) // 控制调色板显示
 const currentColorIndex = ref(0) // 当前选中的颜色索引
+// Insert 分类下拉选择相关
+const createdSignatures = ref<string[]>([])
+const createdStamps = ref<string[]>([])
+const selectedInsertItem = ref<string | undefined>(undefined)
 
 
 // 获取当前工具的选中颜色
@@ -405,11 +526,11 @@ const categoryToAnnotations = {
     Annotation.CIRCLE,
     Annotation.ARROW
   ],
-  'insert': [
+  'insert': defaultOptions.setting.HIDE_INSERT ? [] : [
     Annotation.SIGNATURE,
     Annotation.STAMP
   ],
-  'measure': []
+  'measure': defaultOptions.setting.HIDE_MEASURE ? [] : []
 }
 
 // state
@@ -437,7 +558,7 @@ const annotations = ref<IAnnotationType[]>(filteredAnnotations.value)
 const dataTransfer = ref<string | null>(null)
 
 const selectedType = computed(() => currentAnnotation.value?.type)
-const isColorDisabled = computed(() => !currentAnnotation.value?.styleEditable?.color)
+// removed unused isColorDisabled
 
 // Watch for category changes
 watch(() => props.selectedCategory, () => {
@@ -481,14 +602,10 @@ function onAnnotationClick(annotation: IAnnotationType | null) {
   }
   if (annotation?.type !== Annotation.SIGNATURE) {
     dataTransfer.value = null
+    selectedInsertItem.value = undefined
   }
 }
 
-function handleAdd(signatureDataUrl: string, annotation: IAnnotationType) {
-  message.info(t('toolbar.message.selectPosition'))
-  dataTransfer.value = signatureDataUrl
-  currentAnnotation.value = annotation
-}
 
 function handleColorChange(color: string) {
 
@@ -649,6 +766,28 @@ function handleStrokeWidthChange(value: number) {
     }
   }
 }
+
+// Insert 分类：不再使用标签列表
+
+// 下拉 overlay 已改为内联组件，菜单点击逻辑不再需要
+
+function onInlineAdd(dataUrl: string) {
+  if (!currentAnnotation.value) return
+  if (currentAnnotation.value.type === Annotation.SIGNATURE) {
+    if (!createdSignatures.value.includes(dataUrl)) {
+      createdSignatures.value.push(dataUrl)
+    }
+  } else if (currentAnnotation.value.type === Annotation.STAMP) {
+    if (!createdStamps.value.includes(dataUrl)) {
+      createdStamps.value.push(dataUrl)
+    }
+  }
+  selectedInsertItem.value = dataUrl
+  dataTransfer.value = dataUrl
+  message.info(t('toolbar.message.selectPosition'))
+}
+
+// reserved: remove handler if needed in future
 
 
 function updateStyle(annotationType: AnnotationType, style: IAnnotationStyle) {
@@ -1011,5 +1150,39 @@ watch([currentAnnotation, dataTransfer], ([anno, transfer]) => {
       }
     }
   }
+}
+
+.insert-dropdown-overlay {
+  max-height: 280px;
+  overflow: auto;
+  padding: 8px;
+  background: #fff;
+}
+
+.insert-dropdown {
+  .ant-dropdown-menu {
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+.insert-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+.insert-trigger-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.insert-trigger-thumb {
+  height: 16px;
+  border-radius: 4px;
+}
+.insert-trigger-arrow {
+  color: #666;
 }
 </style>

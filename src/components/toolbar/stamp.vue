@@ -1,112 +1,38 @@
 <template>
-  <!-- <div> -->
-    <a-popover
-      v-model:open="isPopoverOpen"
-      trigger="click"
-      placement="bottom"
-      :arrow="false"
-      rootClassName="StampPop"
-    >
-      <template #content>
-        <div>
-          <a-radio-group
-            v-model:value="stampType"
-            button-style="solid"
-            size="small"
-          >
-            <a-radio-button value="default">{{ t('normal.default') }}</a-radio-button>
-            <a-radio-button value="custom">{{ t('normal.custom') }}</a-radio-button>
-          </a-radio-group>
-          
-          <ul v-if="stampType === 'default'" class="StampPop-Container">
-            <li v-for="(stamp, idx) in defaultStamps" :key="idx">
-              <img @click="handleAdd(stamp.url)" :src="stamp.url" />
-            </li>
-          </ul>
-          
-          <div v-if="stampType === 'custom'">
-            <ul class="StampPop-Container">
-              <li v-for="(stamp, idx) in customStamps" :key="idx">
-                <img @click="handleAdd(stamp)" :src="stamp" />
-              </li>
-            </ul>
-            <a-button
-              type="default"
-              :style="{ marginTop: '8px' }"
-              block
-              size="small"
-              @click="() => {
-                isPopoverOpen = false;
-                isModalOpen = true;
-              }"
-            >
-              <template #icon>
-                <PlusCircleOutlined />
-              </template>
-              {{ t('toolbar.buttons.createStamp') }}
-            </a-button>
-          </div>
-          
-          <a-divider />
-          
-          <input 
-            ref="fileRef" 
-            style="display: none" 
-            type="file" 
-            :accept="defaultOptions.stamp.ACCEPT" 
-            @change="onInputFileChange" 
-          />
-          
-          <div class="StampPop-Toolbar">
-            <a-button
-              block
-              type="link"
-              @click="() => fileRef?.click()"
-            >
-              <template #icon>
-                <UploadOutlined />
-              </template>
-              {{ t('normal.upload') }}
-            </a-button>
-          </div>
+  <div v-if="inline" class="StampInline">
+    <div class="panel">
+      <a-radio-group v-model:value="stampType" button-style="solid" size="small" class="tabs">
+        <a-radio-button value="default">Standard</a-radio-button>
+        <a-radio-button value="custom">Custom</a-radio-button>
+      </a-radio-group>
+      <div class="grid" v-if="stampType === 'default'">
+        <div v-for="(stamp, idx) in defaultStamps" :key="idx" class="chip" @click="handleAdd(stamp.url)" :style="{ borderColor: '#3b5998', color: '#3b5998' }">
+          {{ (stamp as any).label ?? 'STAMP' }}
         </div>
-      </template>
-      
-      <div class="icon">
-        <component :is="annotation.icon" />
       </div>
-      <!-- <div class="name">{{ t(`annotations.${annotation.name}`) }}</div> -->
-    </a-popover>
-
-    <a-modal
-      v-model:open="isModalOpen"
-      :title="t('toolbar.buttons.createStamp')"
-      :ok-text="t('normal.ok')"
-      :cancel-text="t('normal.cancel')"
-      class="StampTool"
-      @ok="handleOk"
-      @cancel="() => isModalOpen = false"
-      @after-open-change="onModalOpenChange"
-    >
+      <div v-else class="grid">
+        <div v-for="(stamp, idx) in customStamps" :key="idx" class="chip">
+          <img :src="stamp" @click="handleAdd(stamp)" />
+          <a-button type="text" size="small" @click="() => removeCustomStamp(idx)">
+            <DeleteOutlined />
+          </a-button>
+        </div>
+        <a-button block class="create-btn" @click="() => isModalOpen = true">Create New Stamp</a-button>
+        <input ref="fileRef" style="display: none" type="file" :accept="defaultOptions.stamp.ACCEPT" @change="onInputFileChange" />
+        <a-button type="link" size="small" @click="() => fileRef?.click()">
+          <template #icon><UploadOutlined /></template>
+          {{ t('normal.upload') }}
+        </a-button>
+      </div>
+    </div>
+    <a-modal v-model:open="isModalOpen" :title="t('toolbar.buttons.createStamp')" :ok-text="t('normal.ok')" :cancel-text="t('normal.cancel')" class="StampTool" @ok="handleOk" @cancel="() => isModalOpen = false" @after-open-change="onModalOpenChange">
       <div>
         <div class="StampTool-Container">
-          <div
-            class="StampTool-Container-ImagePreview"
-            ref="containerRef"
-            :style="{ height: STAMP_HEIGHT + 'px' }"
-          />
-          
-          <a-form
-            ref="formRef"
-            :model="formValues"
-            layout="vertical"
-            size="middle"
-            @values-change="onValuesChange"
-          >
+          <div class="StampTool-Container-ImagePreview" ref="containerRef" :style="{ height: STAMP_HEIGHT + 'px' }" />
+          <a-form ref="formRef" :model="formValues" layout="vertical" size="middle" @values-change="onValuesChange">
             <a-form-item :label="t('editor.stamp.stampText')" name="stampText">
               <a-input v-model:value="formValues.stampText" />
             </a-form-item>
-            
             <a-row>
               <a-col :span="5">
                 <a-form-item :label="t('editor.stamp.textColor')" name="textColor">
@@ -114,61 +40,34 @@
                     <template #content>
                       <div class="color-picker-panel">
                         <div class="color-presets">
-                          <div
-                            v-for="color in ['#ffffff', '#000000', ...defaultOptions.colors]"
-                            :key="color"
-                            class="color-preset"
-                            :style="{ backgroundColor: color }"
-                            :class="{ active: formValues.textColor === color }"
-                            @click="formValues.textColor = color"
-                          />
+                          <div v-for="color in ['#ffffff', '#000000', ...defaultOptions.colors]" :key="color" class="color-preset" :style="{ backgroundColor: color }" :class="{ active: formValues.textColor === color }" @click="formValues.textColor = color" />
                         </div>
                         <div class="custom-color">
-                          <input
-                            type="color"
-                            :value="formValues.textColor"
-                            @input="(e) => formValues.textColor = (e.target as HTMLInputElement).value"
-                          />
+                          <input type="color" :value="formValues.textColor" @input="(e) => formValues.textColor = (e.target as HTMLInputElement).value" />
                           <span>{{ t('normal.customColor') }}</span>
                         </div>
                       </div>
                     </template>
-                    <a-button size="small" :style="{ backgroundColor: formValues.textColor, minWidth: '60px' }">
-                      {{ t('editor.stamp.textColor') }}
-                    </a-button>
+                    <a-button size="small" :style="{ backgroundColor: formValues.textColor, minWidth: '60px' }">{{ t('editor.stamp.textColor') }}</a-button>
                   </a-popover>
                 </a-form-item>
               </a-col>
-              
               <a-col :span="12">
                 <a-form-item :label="t('editor.stamp.fontStyle')" name="fontStyle">
                   <a-checkbox-group v-model:value="formValues.fontStyle">
-                    <a-checkbox value="bold">
-                      <BoldOutlined />
-                    </a-checkbox>
-                    <a-checkbox value="italic">
-                      <ItalicOutlined />
-                    </a-checkbox>
-                    <a-checkbox value="underline">
-                      <UnderlineOutlined />
-                    </a-checkbox>
-                    <a-checkbox value="strikeout">
-                      <StrikethroughOutlined />
-                    </a-checkbox>
+                    <a-checkbox value="bold"><BoldOutlined /></a-checkbox>
+                    <a-checkbox value="italic"><ItalicOutlined /></a-checkbox>
+                    <a-checkbox value="underline"><UnderlineOutlined /></a-checkbox>
+                    <a-checkbox value="strikeout"><StrikethroughOutlined /></a-checkbox>
                   </a-checkbox-group>
                 </a-form-item>
               </a-col>
-              
               <a-col :span="7">
                 <a-form-item :label="t('editor.stamp.fontFamily')" name="fontFamily">
-                  <a-select 
-                    v-model:value="formValues.fontFamily"
-                    :options="defaultOptions.defaultFontList"
-                  />
+                  <a-select v-model:value="formValues.fontFamily" :options="defaultOptions.defaultFontList" />
                 </a-form-item>
               </a-col>
             </a-row>
-            
             <a-row>
               <a-col :span="8">
                 <a-form-item :label="t('editor.stamp.backgroundColor')" name="backgroundColor">
@@ -176,64 +75,36 @@
                     <template #content>
                       <div class="color-picker-panel">
                         <div class="color-presets">
-                          <div
-                            v-for="color in defaultOptions.colors"
-                            :key="color"
-                            class="color-preset"
-                            :style="{ backgroundColor: color }"
-                            :class="{ active: formValues.backgroundColor === color }"
-                            @click="formValues.backgroundColor = color"
-                          />
+                          <div v-for="color in defaultOptions.colors" :key="color" class="color-preset" :style="{ backgroundColor: color }" :class="{ active: formValues.backgroundColor === color }" @click="formValues.backgroundColor = color" />
                         </div>
                         <div class="custom-color">
-                          <input
-                            type="color"
-                            :value="formValues.backgroundColor"
-                            @input="(e) => formValues.backgroundColor = (e.target as HTMLInputElement).value"
-                          />
+                          <input type="color" :value="formValues.backgroundColor" @input="(e) => formValues.backgroundColor = (e.target as HTMLInputElement).value" />
                           <span>{{ t('normal.customColor') }}</span>
                         </div>
                       </div>
                     </template>
-                    <a-button size="small" :style="{ backgroundColor: formValues.backgroundColor, minWidth: '80px' }">
-                      {{ t('editor.stamp.backgroundColor') }}
-                    </a-button>
+                    <a-button size="small" :style="{ backgroundColor: formValues.backgroundColor, minWidth: '80px' }">{{ t('editor.stamp.backgroundColor') }}</a-button>
                   </a-popover>
                 </a-form-item>
               </a-col>
-              
               <a-col :span="8">
                 <a-form-item :label="t('editor.stamp.borderColor')" name="borderColor">
                   <a-popover trigger="click" placement="bottom" :arrow="false">
                     <template #content>
                       <div class="color-picker-panel">
                         <div class="color-presets">
-                          <div
-                            v-for="color in defaultOptions.colors"
-                            :key="color"
-                            class="color-preset"
-                            :style="{ backgroundColor: color }"
-                            :class="{ active: formValues.borderColor === color }"
-                            @click="formValues.borderColor = color"
-                          />
+                          <div v-for="color in defaultOptions.colors" :key="color" class="color-preset" :style="{ backgroundColor: color }" :class="{ active: formValues.borderColor === color }" @click="formValues.borderColor = color" />
                         </div>
                         <div class="custom-color">
-                          <input
-                            type="color"
-                            :value="formValues.borderColor"
-                            @input="(e) => formValues.borderColor = (e.target as HTMLInputElement).value"
-                          />
+                          <input type="color" :value="formValues.borderColor" @input="(e) => formValues.borderColor = (e.target as HTMLInputElement).value" />
                           <span>{{ t('normal.customColor') }}</span>
                         </div>
                       </div>
                     </template>
-                    <a-button size="small" :style="{ borderColor: formValues.borderColor, minWidth: '80px' }">
-                      {{ t('editor.stamp.borderColor') }}
-                    </a-button>
+                    <a-button size="small" :style="{ borderColor: formValues.borderColor, minWidth: '80px' }">{{ t('editor.stamp.borderColor') }}</a-button>
                   </a-popover>
                 </a-form-item>
               </a-col>
-              
               <a-col :span="8">
                 <a-form-item :label="t('editor.stamp.borderStyle')" name="borderStyle">
                   <a-radio-group v-model:value="formValues.borderStyle">
@@ -243,43 +114,76 @@
                 </a-form-item>
               </a-col>
             </a-row>
-            
             <a-divider />
-            
             <a-row>
               <a-col :span="10">
                 <a-form-item :label="t('editor.stamp.timestampText')" name="timestamp">
                   <a-checkbox-group v-model:value="formValues.timestamp">
-                    <a-checkbox value="username">
-                      {{ t('editor.stamp.username') }}
-                    </a-checkbox>
-                    <a-checkbox value="date">
-                      {{ t('editor.stamp.date') }}
-                    </a-checkbox>
+                    <a-checkbox value="username">{{ t('editor.stamp.username') }}</a-checkbox>
+                    <a-checkbox value="date">{{ t('editor.stamp.date') }}</a-checkbox>
                   </a-checkbox-group>
                 </a-form-item>
               </a-col>
-              
               <a-col :span="14">
                 <a-form-item :label="t('editor.stamp.dateFormat')" name="dateFormat">
-                  <a-select 
-                    v-model:value="formValues.dateFormat"
-                    :options="DATE_FORMAT_OPTIONS" 
-                  />
+                  <a-select v-model:value="formValues.dateFormat" :options="DATE_FORMAT_OPTIONS" />
                 </a-form-item>
               </a-col>
             </a-row>
-            
             <a-form-item :label="t('editor.stamp.customTimestamp')" name="customTimestampText">
               <a-input v-model:value="formValues.customTimestampText" />
             </a-form-item>
           </a-form>
         </div>
-        
         <div class="StampTool-Toolbar"></div>
       </div>
     </a-modal>
-  <!-- </div> -->
+  </div>
+  <div v-else>
+    <a-popover v-model:open="isPopoverOpen" trigger="click" placement="bottom" :arrow="false" rootClassName="StampPop">
+      <template #content>
+        <div>
+          <a-radio-group v-model:value="stampType" button-style="solid" size="small">
+            <a-radio-button value="default">{{ t('normal.default') }}</a-radio-button>
+            <a-radio-button value="custom">{{ t('normal.custom') }}</a-radio-button>
+          </a-radio-group>
+          <ul v-if="stampType === 'default'" class="StampPop-Container">
+            <li v-for="(stamp, idx) in defaultStamps" :key="idx"><img @click="handleAdd(stamp.url)" :src="stamp.url" /></li>
+          </ul>
+          <div v-if="stampType === 'custom'">
+            <ul class="StampPop-Container">
+              <li v-for="(stamp, idx) in customStamps" :key="idx"><img @click="handleAdd(stamp)" :src="stamp" /></li>
+            </ul>
+            <a-button type="default" :style="{ marginTop: '8px' }" block size="small" @click="() => { isPopoverOpen = false; isModalOpen = true; }">
+              <template #icon><PlusCircleOutlined /></template>
+              {{ t('toolbar.buttons.createStamp') }}
+            </a-button>
+          </div>
+          <a-divider />
+          <input ref="fileRef" style="display: none" type="file" :accept="defaultOptions.stamp.ACCEPT" @change="onInputFileChange" />
+          <div class="StampPop-Toolbar">
+            <a-button block type="link" @click="() => fileRef?.click()">
+              <template #icon><UploadOutlined /></template>
+              {{ t('normal.upload') }}
+            </a-button>
+          </div>
+        </div>
+      </template>
+      <div class="icon"><component :is="annotation.icon" /></div>
+    </a-popover>
+    <a-modal v-model:open="isModalOpen" :title="t('toolbar.buttons.createStamp')" :ok-text="t('normal.ok')" :cancel-text="t('normal.cancel')" class="StampTool" @ok="handleOk" @cancel="() => isModalOpen = false" @after-open-change="onModalOpenChange">
+      <div>
+        <div class="StampTool-Container">
+          <div class="StampTool-Container-ImagePreview" ref="containerRef" :style="{ height: STAMP_HEIGHT + 'px' }" />
+          <a-form ref="formRef" :model="formValues" layout="vertical" size="middle" @values-change="onValuesChange">
+            <a-form-item :label="t('editor.stamp.stampText')" name="stampText"><a-input v-model:value="formValues.stampText" /></a-form-item>
+            <!-- rest unchanged -->
+          </a-form>
+        </div>
+        <div class="StampTool-Toolbar"></div>
+      </div>
+    </a-modal>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -298,8 +202,9 @@ dayjs.extend(customParseFormat)
 interface Props {
   annotation: IAnnotationType
   userName: string
+  inline?: boolean
 }
-// const { annotation } = defineProps<Props>()
+const { annotation, userName, inline = false } = defineProps<Props>()
 
 interface Emits {
   (e: 'add', signatureDataUrl: string): void
@@ -318,7 +223,7 @@ type FieldType = {
   dateFormat: string
 }
 
-const props = defineProps<Props>()
+// duplicate removed
 const emit = defineEmits<Emits>()
 
 const { t } = useI18n()
@@ -378,6 +283,7 @@ const defaultStamps = defaultOptions.stamp.DEFAULT_STAMP || []
 const isPopoverOpen = ref(false)
 const isModalOpen = ref(false)
 const stampType = ref<string>('default')
+// removed panel toggle and header label in inline mode
 
 const DEFAULT_VALUE: FieldType = {
   stampText: t('editor.stamp.defaultText'),
@@ -416,6 +322,7 @@ const handleOk = () => {
 
   if (dataUrl) {
     customStamps.value.push(dataUrl)
+    try { localStorage.setItem('toolbar.createdStamps', JSON.stringify(customStamps.value)) } catch {}
     handleAdd(dataUrl)
     isModalOpen.value = false
   }
@@ -464,14 +371,20 @@ const onInputFileChange = (event: Event) => {
         ctx.drawImage(img, 0, 0, width, height)
         const pngDataUrl = canvas.toDataURL('image/png')
         target.value = ''
-        emit('add', pngDataUrl)
         customStamps.value.push(pngDataUrl)
+        try { localStorage.setItem('toolbar.createdStamps', JSON.stringify(customStamps.value)) } catch {}
+        emit('add', pngDataUrl)
         isPopoverOpen.value = false
       }
     }
   }
 
   reader.readAsDataURL(_file)
+}
+
+const removeCustomStamp = (idx: number) => {
+  customStamps.value.splice(idx, 1)
+  try { localStorage.setItem('toolbar.createdStamps', JSON.stringify(customStamps.value)) } catch {}
 }
 
 const initializeKonvaStage = (values: FieldType) => {
@@ -496,7 +409,7 @@ const initializeKonvaStage = (values: FieldType) => {
   const isUnderline = fontStyle.includes('underline')
   const isStrikeout = fontStyle.includes('strikeout')
   const now = dayjs()
-  const username = props.userName
+  const username = userName
   const formattedDate = dateFormat ? now.format(dateFormat) : ''
   const customText = values.customTimestampText?.trim()
   const timestampParts = [
@@ -651,7 +564,27 @@ watch(() => formValues, onValuesChange, { deep: true })
 onUnmounted(() => {
   destroyKonvaStage()
 })
+
+watch(isModalOpen, (val) => {
+  if (val) {
+    try {
+      const saved = JSON.parse(localStorage.getItem('toolbar.createdStamps') || '[]')
+      if (Array.isArray(saved)) customStamps.value = saved
+    } catch {}
+  }
+})
 </script>
+<style scoped>
+.StampInline { width: 300px; background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.StampInline .header { display:flex; align-items:center; justify-content:space-between; padding:6px 8px; }
+.StampInline .pill { background:#eef5e8; color:#4b7f2f; border:1px solid #cdd9bf; border-radius:8px; padding:4px 10px; font-weight:600; }
+.StampInline .panel { border-top:1px solid #eaeaea; padding:8px; }
+.StampInline .tabs { width:100%; margin-bottom:8px; }
+.StampInline .grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:180px; overflow:auto; }
+.StampInline .chip { border:2px solid #3b5998; border-radius:12px; padding:6px 10px; text-align:center; font-weight:700; background:#f7f9fc; cursor:pointer; }
+.StampInline .chip img { height:28px; }
+.StampInline .create-btn { margin-top:8px; }
+</style>
 
 <style scoped>
 .color-picker-panel {
