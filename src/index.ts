@@ -122,8 +122,8 @@ class PdfjsAnnotationExtension {
       setDefaultMode: () => {
         this.customToolbarRef.value?.activeAnnotation(annotationDefinitions[0])
       },
-      onWebSelectionSelected: (range, isOnExistingAnnotation) => {
-        this.customPopbarRef.value?.open(range, isOnExistingAnnotation)
+      onWebSelectionSelected: range => {
+        this.customPopbarRef.value?.open(range)
       },
       onStoreAdd: (annotation, isOriginal, currentAnnotation) => {
         this.customCommentRef.value?.addAnnotation(annotation)
@@ -300,22 +300,10 @@ class PdfjsAnnotationExtension {
             this.selectedCategoryRef.value = category
             target.classList.add('active')
             
-            if (category === 'view') {
-              // 选中View时隐藏二级菜单，页面向上填充，设置View模式
-              this.hideSecondaryToolbar()
-              this.painter.setViewMode(true) // 设置View模式
-              // 激活选择工具，允许用户选择和操作已有的注释
-              const selectTool = annotationDefinitions.find(tool => tool.type === Annotation.SELECT)
-              if (selectTool) {
-                this.painter.activate(selectTool, null)
-              }
-            } else {
-              // 选中其他按钮时显示二级菜单，页面向下移，取消View模式
-              this.showSecondaryToolbar()
-              this.painter.setViewMode(false) // 取消View模式
-              // 重新渲染工具栏以应用过滤
-              this.updateToolbarCategory()
-            }
+            // 显示二级菜单，页面向下移
+            this.showSecondaryToolbar()
+            // 重新渲染工具栏以应用过滤
+            this.updateToolbarCategory()
           }
         })
       })

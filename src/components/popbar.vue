@@ -17,7 +17,6 @@ const show = ref(false)
 const currentRange = ref<Range | null>(null)
 const selectedColor = ref('#ffff33')
 const opacity = ref(50)
-const isModifyMode = ref(false) // 新增：是否是修改模式
 
 // 获取高亮类型的注释
 const annotations = computed<IAnnotationType[]>(() => {
@@ -26,11 +25,11 @@ const annotations = computed<IAnnotationType[]>(() => {
 })
 
 // 快速颜色选择
-const quickColors = ['#ffff33', '#ff6666', '#66ff66', '#66ccff', '#ff9933', '#cc66ff']
+// const quickColors = ['#ffff33', '#ff6666', '#66ff66', '#66ccff', '#ff9933', '#cc66ff']
 
 
 // 打开 Popbar - 使用选择区域的实际边界矩形
-const open = async (range: Range | null, isOnExistingAnnotation: boolean = false) => {
+const open = async (range: Range | null) => {
   currentRange.value = range
   
   // 如果 range 为空或 startContainer 和 endContainer 都不是文本节点，隐藏菜单
@@ -40,15 +39,6 @@ const open = async (range: Range | null, isOnExistingAnnotation: boolean = false
   }
 
   show.value = true
-
-  // 根据是否在现有注释上决定显示内容
-  if (isOnExistingAnnotation) {
-    // 在现有注释上时，显示修改工具(调色板)
-    isModifyMode.value = true
-  } else {
-    // 在无注释文字上时，显示常规注释选择工具
-    isModifyMode.value = false
-  }
 
   // 获取选择区域的实际边界矩形
   const rangeRect = range.getBoundingClientRect()
@@ -87,7 +77,6 @@ const open = async (range: Range | null, isOnExistingAnnotation: boolean = false
 const close = () => {
   show.value = false
   currentRange.value = null
-  isModifyMode.value = false // 重置修改模式
 }
 
 // 点击注释按钮
@@ -112,20 +101,20 @@ const handleAnnotationClick = (annotation: IAnnotationType | null) => {
 }
 
 // 处理颜色变化
-const handleColorChange = (color: string) => {
-  selectedColor.value = color
-  if (props.onStyleChange) {
-    props.onStyleChange({ color, opacity: opacity.value })
-  }
-}
+// const handleColorChange = (color: string) => {
+//   selectedColor.value = color
+//   if (props.onStyleChange) {
+//     props.onStyleChange({ color, opacity: opacity.value })
+//   }
+// }
 
 // 处理透明度变化
-const handleOpacityChange = (newOpacity: number) => {
-  opacity.value = newOpacity
-  if (props.onStyleChange) {
-    props.onStyleChange({ color: selectedColor.value, opacity: newOpacity })
-  }
-}
+// const handleOpacityChange = (newOpacity: number) => {
+//   opacity.value = newOpacity
+//   if (props.onStyleChange) {
+//     props.onStyleChange({ color: selectedColor.value, opacity: newOpacity })
+//   }
+// }
 
 // 暴露方法给父组件
 defineExpose({
@@ -139,12 +128,7 @@ defineExpose({
     ref="containerRef"
     :class="['CustomPopbar', show ? 'show' : 'hide']"
   >
-    <!-- 修改模式：显示调色板 -->
-    <template v-if="isModifyMode">
-    </template>
-    
-    <!-- 普通模式：显示注释工具 -->
-    <template v-else>
+    <!-- 显示注释工具 -->
       <ul class="buttons">
         <li v-for="(annotation, index) in annotations" :key="index" @click="handleAnnotationClick(annotation)">
           <div class="icon">
@@ -154,9 +138,9 @@ defineExpose({
       </ul>
       
       <!-- 颜色和透明度控制 -->
-      <div v-if="show" class="style-controls">
+      <!-- <div v-if="show" class="style-controls"> -->
         <!-- 颜色选择 -->
-        <div class="color-section">
+        <!-- <div class="color-section">
           <div 
             v-for="color in quickColors" 
             :key="color"
@@ -165,10 +149,10 @@ defineExpose({
             :class="{ selected: selectedColor === color }"
             @click="handleColorChange(color)"
           />
-        </div>
+        </div> -->
         
         <!-- 透明度控制 -->
-        <div class="opacity-section">
+        <!-- <div class="opacity-section">
           <span class="opacity-label">{{ opacity }}%</span>
           <input
             type="range"
@@ -179,10 +163,8 @@ defineExpose({
             class="opacity-slider"
             @input="handleOpacityChange(($event.target as HTMLInputElement).valueAsNumber)"
           />
-        </div>
+        </div> -->
       </div>
-    </template>
-  </div>
 </template>
 
 <style scoped lang="scss">
