@@ -452,6 +452,8 @@ watch(() => props.selectedCategory, () => {
 function onAnnotationClick(annotation: IAnnotationType | null) {
   // 关闭调色板
   closeColorPanel()
+
+  console.log("annotation:", annotation)
   
   if (annotation?.type === selectedType.value) {
     currentAnnotation.value = null
