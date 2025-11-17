@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineExpose, nextTick, defineComponent, h } from 'vue'
-import { Button, Checkbox, Dropdown, Input, Popover, Space, Typography } from 'ant-design-vue'
+import { Button, Checkbox, Dropdown, Popover, Space, Typography } from 'ant-design-vue'
 import { MoreOutlined, FilterOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type { IAnnotationComment, IAnnotationStore, PdfjsAnnotationSubtype } from '../../const/definitions'
 // simplified comment: status removed
-import { formatPDFDate, formatTimestamp, generateUUID } from '../../utils/utils'
+import { formatPDFDate, formatTimestamp } from '../../utils/utils'
 import {
   CircleIcon,
   FreehandIcon,
@@ -25,7 +25,6 @@ import {
 
 
 const { Text, Paragraph } = Typography
-const { TextArea } = Input
 
 interface CustomCommentProps {
   userName: string
@@ -40,9 +39,7 @@ const props = defineProps<CustomCommentProps>()
 // -------------------- 状态 --------------------
 const annotations = ref<IAnnotationStore[]>([])
 const currentAnnotation = ref<IAnnotationStore | null>(null)
-const replyAnnotation = ref<IAnnotationStore | null>(null)
-const currentReply = ref<IAnnotationComment | null>(null)
-const editAnnotation = ref<IAnnotationStore | null>(null)
+// removed comment/reply input states
 const selectedUsers = ref<string[]>([])
 const selectedTypes = ref<PdfjsAnnotationSubtype[]>([])
 
@@ -105,8 +102,7 @@ const addAnnotation = (annotation: IAnnotationStore) => {
 const delAnnotation = (id: string) => {
   annotations.value = annotations.value.filter(a => a.id !== id)
   if (currentAnnotation.value?.id === id) currentAnnotation.value = null
-  if (replyAnnotation.value?.id === id) replyAnnotation.value = null
-  currentReply.value = null
+  // reply/edit states removed
 }
 
 const updateAnnotation = (updatedAnnotation: IAnnotationStore) => {
@@ -116,7 +112,7 @@ const updateAnnotation = (updatedAnnotation: IAnnotationStore) => {
     }
     return a
   })
-  editAnnotation.value = null
+  // edit state removed
 }
 
 const copyAnnotation = async (annotation: IAnnotationStore) => {
@@ -135,17 +131,6 @@ const getCardStyle = (annotation: IAnnotationStore) => {
 const selectedAnnotation = (annotation: IAnnotationStore, isClick: boolean) => {
   currentAnnotation.value = annotation
   if (!isClick) return
-
-  const isOwn = annotation.title === props.userName
-  const isEmptyComment = !annotation.contentsObj?.text || annotation.contentsObj.text === ''
-
-  if (isOwn && isEmptyComment) {
-    editAnnotation.value = annotation
-  } else {
-    replyAnnotation.value = annotation
-  }
-
-  // 滚动到元素
   nextTick(() => {
     const el = annotationRefs.value[annotation.id]
     el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -188,30 +173,7 @@ const handleTypeToggle = (type: PdfjsAnnotationSubtype) => {
 }
 
 // -------------------- 评论/回复 --------------------
-const updateComment = (annotation: IAnnotationStore, comment: string) => {
-  annotation.contentsObj = { ...annotation.contentsObj, text: comment }
-  props.onUpdate(annotation)
-}
-
-const addReply = (annotation: IAnnotationStore, comment: string, status?: string) => {
-  const newReply: IAnnotationComment = { id: generateUUID(), title: props.userName, date: formatTimestamp(Date.now()), content: comment, status }
-  annotations.value = annotations.value.map(a => {
-    if (a.id === annotation.id) {
-      const updatedAnnotation = { ...a, comments: [...(a.comments || []), newReply], date: formatTimestamp(Date.now()) }
-      props.onUpdate(updatedAnnotation)
-      return updatedAnnotation
-    }
-    return a
-  })
-  replyAnnotation.value = null
-}
-
-const updateReply = (annotation: IAnnotationStore, reply: IAnnotationComment, comment: string) => {
-  reply.date = formatTimestamp(Date.now())
-  reply.content = comment
-  reply.title = props.userName
-  props.onUpdate(annotation)
-}
+// removed comment/reply input flows
 
 const deleteReply = (annotation: IAnnotationStore, reply: IAnnotationComment) => {
   let updatedAnnotation: IAnnotationStore | null = null
@@ -222,15 +184,12 @@ const deleteReply = (annotation: IAnnotationStore, reply: IAnnotationComment) =>
     }
     return a
   })
-  if (currentReply.value?.id === reply.id) currentReply.value = null
   if (updatedAnnotation) props.onUpdate(updatedAnnotation)
 }
 
 const deleteAnnotation = (annotation: IAnnotationStore) => {
   annotations.value = annotations.value.filter(a => a.id !== annotation.id)
   if (currentAnnotation.value?.id === annotation.id) currentAnnotation.value = null
-  if (replyAnnotation.value?.id === annotation.id) replyAnnotation.value = null
-  currentReply.value = null
   props.onDelete(annotation.id)
 }
 
@@ -246,32 +205,35 @@ defineExpose({
 <template>
   <div class="CustomComment" @scroll="props.onScroll && props.onScroll()">
     <div class="filters">
-      <Popover placement="bottomLeft">
-        <template #content>
-          <div class="CustomComment_filterContent">
-            <div class="title">{{ t('normal.type') }}</div>
-            <ul>
-              <li v-for="([type, count]) in allTypes" :key="type">
-                <Checkbox :checked="selectedTypes.includes(type)" @change="() => handleTypeToggle(type)">
-                  <Space>
-                    <AnnotationIcon :subtype="type" />
-                    <Text type="secondary">({{ count }})</Text>
-                  </Space>
-                </Checkbox>
-              </li>
-            </ul>
-            <div style="display:flex; justify-content:space-between;">
-              <Button type="link" @click="selectedTypes = allTypes.map(([t]) => t)">{{ t('normal.selectAll') }}</Button>
-              <Button type="link" @click="selectedTypes = []">{{ t('normal.clear') }}</Button>
+      <div class="FiltersHeader">
+        <span class="FiltersTitle">笺注</span>
+        <Popover placement="bottomLeft" trigger="click">
+          <template #content>
+            <div class="CustomComment_filterContent">
+              <!-- <div class="title">{{ t('normal.type') }}</div> -->
+              <div class="filterRows">
+                <div class="filterRow" v-for="([type, count]) in allTypes" :key="type">
+                  <Checkbox :checked="selectedTypes.includes(type)" @change="() => handleTypeToggle(type)">
+                    <Space>
+                      <AnnotationIcon :subtype="type" />
+                      <Text type="secondary">({{ count }})</Text>
+                    </Space>
+                  </Checkbox>
+                </div>
+              </div>
+              <div class="filterActions">
+                <Button class="filterActionBtn" type="link" size="small" @click="selectedTypes = allTypes.map(([t]) => t)">{{ t('normal.selectAll') }}</Button>
+                <Button class="filterActionBtn" type="link" size="small" @click="selectedTypes = []">{{ t('normal.clear') }}</Button>
+              </div>
             </div>
-          </div>
-        </template>
-        <Button size="small">
-          <template #icon>
-            <FilterOutlined />
           </template>
-        </Button>
-      </Popover>
+          <Button class="FiltersIconBtn" type="text" size="small">
+            <template #icon>
+              <FilterOutlined />
+            </template>
+          </Button>
+        </Popover>
+      </div>
     </div>
 
     <div class="list">
@@ -299,18 +261,7 @@ defineExpose({
             </span>
           </div>
 
-          <!-- 评论输入框 -->
-          <div v-if="editAnnotation && currentAnnotation?.id === annotation.id">
-            <TextArea
-              :value="annotation.contentsObj?.text || ''"
-              @update:value="(val) => annotation.contentsObj = { ...annotation.contentsObj, text: val }"
-              :rows="4"
-              @blur="editAnnotation=null"
-              @keydown.enter.exact.prevent="updateComment(annotation, annotation.contentsObj?.text || '')"
-            />
-            <Button type="primary" block @click="updateComment(annotation, annotation.contentsObj?.text || '' )">{{ t('normal.confirm') }}</Button>
-          </div>
-          <Paragraph v-else style="margin:8px 0 8px 15px" :ellipsis="{ rows:3, expandable:true, symbol: t('normal.more') }">
+          <Paragraph style="margin:8px 0 8px 15px" :ellipsis="{ rows:3, expandable:true, symbol: t('normal.more') }">
             {{ annotation.contentsObj?.text || '' }}
           </Paragraph>
 
@@ -322,7 +273,6 @@ defineExpose({
                 <Dropdown>
                   <template #overlay>
                     <ul>
-                      <li @click.stop="currentReply=reply">{{ t('normal.edit') }}</li>
                       <li @click.stop="deleteReply(annotation, reply)">{{ t('normal.delete') }}</li>
                     </ul>
                   </template>
@@ -330,23 +280,8 @@ defineExpose({
                 </Dropdown>
               </span>
             </div>
-
-            <div v-if="currentReply?.id === reply.id">
-              <TextArea v-model:value="reply.content" :rows="4" @blur="currentReply=null" @keydown.enter.exact.prevent="updateReply(annotation, reply, reply.content)" />
-              <Button type="primary" block @click="updateReply(annotation, reply, reply.content)">{{ t('normal.confirm') }}</Button>
-            </div>
-            <p v-else>{{ reply.content }}</p>
+            <p>{{ reply.content }}</p>
           </div>
-
-          <!-- 回复输入框 -->
-          <div v-if="replyAnnotation?.id === annotation.id">
-            <TextArea :value="''" :rows="4" @blur="replyAnnotation=null" />
-            <Button type="primary" block @click="addReply(annotation, '')">{{ t('normal.confirm') }}</Button>
-          </div>
-
-          <Button v-if="!replyAnnotation && !currentReply && !editAnnotation && currentAnnotation?.id === annotation.id" style="margin-top:8px" block type="primary" @click="replyAnnotation=annotation">
-            {{ t('normal.reply') }}
-          </Button>
         </div>
       </div>
     </div>
@@ -356,4 +291,44 @@ defineExpose({
 <style scoped lang="scss">
 /* 可复用原 index.scss 样式 */
 @use './index.scss' as *;
+
+.FiltersHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  margin-bottom: 4px;
+}
+.FiltersTitle {
+  font-weight: 600;
+  color: #1d1d1f;
+}
+.FiltersIconBtn {
+  color: #666;
+}
+
+.CustomComment_filterContent {
+  padding: 0px;
+}
+.filterRows {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.filterRow {
+  margin: 0;
+  padding: 0;
+}
+.filterActions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.filterActionBtn {
+  padding: 0;
+  color: #007aff;
+}
 </style>
