@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineExpose, nextTick, defineComponent, h } from 'vue'
 import { Button, Checkbox, Dropdown, Input, Popover, Space, Typography } from 'ant-design-vue'
-import { CheckCircleOutlined, DislikeOutlined, LikeOutlined, MinusCircleOutlined, MinusSquareOutlined, MoreOutlined, StopOutlined, FilterOutlined } from '@ant-design/icons-vue'
+import { MoreOutlined, FilterOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { useI18n } from 'vue-i18n'
 import type { IAnnotationComment, IAnnotationStore, PdfjsAnnotationSubtype } from '../../const/definitions'
-import { CommentStatus } from '../../const/definitions'
+// simplified comment: status removed
 import { formatPDFDate, formatTimestamp, generateUUID } from '../../utils/utils'
 import {
   CircleIcon,
@@ -75,14 +75,7 @@ const iconMapping: Record<PdfjsAnnotationSubtype, any> = {
   Arrow: ArrowIcon
 }
 
-const commentStatusOptions: Record<string, { labelKey: string; icon: any }> = {
-  [CommentStatus.Accepted]: { labelKey: 'comment.status.accepted', icon: LikeOutlined },
-  [CommentStatus.Rejected]: { labelKey: 'comment.status.rejected', icon: DislikeOutlined },
-  [CommentStatus.Cancelled]: { labelKey: 'comment.status.cancelled', icon: MinusCircleOutlined },
-  [CommentStatus.Completed]: { labelKey: 'comment.status.completed', icon: CheckCircleOutlined },
-  [CommentStatus.Closed]: { labelKey: 'comment.status.closed', icon: StopOutlined },
-  [CommentStatus.None]: { labelKey: 'comment.status.none', icon: MinusSquareOutlined }
-}
+// status dropdown removed
 
 // -------------------- 工具函数 --------------------
 const AnnotationIcon = defineComponent({
@@ -101,11 +94,7 @@ const AnnotationIcon = defineComponent({
   }
 })
 
-const getLastStatusIcon = (annotation: IAnnotationStore) => {
-  const lastWithStatus = [...(annotation.comments || [])].reverse().find(c => c.status !== undefined && c.status !== null)
-  const status = lastWithStatus?.status ?? CommentStatus.None
-  return commentStatusOptions[status]?.icon || commentStatusOptions[CommentStatus.None].icon
-}
+// status icon removed
 
 // -------------------- 方法 --------------------
 const addAnnotation = (annotation: IAnnotationStore) => {
@@ -123,11 +112,24 @@ const delAnnotation = (id: string) => {
 const updateAnnotation = (updatedAnnotation: IAnnotationStore) => {
   annotations.value = annotations.value.map(a => {
     if (a.id === updatedAnnotation.id) {
-      return { ...a, konvaClientRect: updatedAnnotation.konvaClientRect, date: formatTimestamp(Date.now()) }
+      return { ...a, konvaClientRect: updatedAnnotation.konvaClientRect, color: updatedAnnotation.color ?? a.color, opacity: updatedAnnotation.opacity ?? a.opacity, strokeWidth: updatedAnnotation.strokeWidth ?? a.strokeWidth, date: formatTimestamp(Date.now()) }
     }
     return a
   })
   editAnnotation.value = null
+}
+
+const copyAnnotation = async (annotation: IAnnotationStore) => {
+  const text = annotation.contentsObj?.text || ''
+  try { await navigator.clipboard.writeText(text) } catch {}
+}
+
+const getCardStyle = (annotation: IAnnotationStore) => {
+  const hex = annotation.color || '#1677ff'
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return { borderLeft: `4px solid ${hex}`, background: `rgba(${r}, ${g}, ${b}, 0.08)` }
 }
 
 const selectedAnnotation = (annotation: IAnnotationStore, isClick: boolean) => {
@@ -180,9 +182,7 @@ const groupedAnnotations = computed(() => {
 })
 
 // -------------------- 切换 --------------------
-const handleUserToggle = (username: string) => {
-  selectedUsers.value = selectedUsers.value.includes(username) ? selectedUsers.value.filter(u => u !== username) : [...selectedUsers.value, username]
-}
+// author filter removed
 const handleTypeToggle = (type: PdfjsAnnotationSubtype) => {
   selectedTypes.value = selectedTypes.value.includes(type) ? selectedTypes.value.filter(t => t !== type) : [...selectedTypes.value, type]
 }
@@ -249,17 +249,6 @@ defineExpose({
       <Popover placement="bottomLeft">
         <template #content>
           <div class="CustomComment_filterContent">
-            <div class="title">{{ t('normal.author') }}</div>
-            <ul>
-              <li v-for="([user, count]) in allUsers" :key="user">
-                <Checkbox :checked="selectedUsers.includes(user)" @change="() => handleUserToggle(user)">
-                  <Space>
-                    <Text :ellipsis="{ tooltip: true }" style="max-width:200px">{{ user }}</Text>
-                    <Text type="secondary">({{ count }})</Text>
-                  </Space>
-                </Checkbox>
-              </li>
-            </ul>
             <div class="title">{{ t('normal.type') }}</div>
             <ul>
               <li v-for="([type, count]) in allTypes" :key="type">
@@ -272,8 +261,8 @@ defineExpose({
               </li>
             </ul>
             <div style="display:flex; justify-content:space-between;">
-              <Button type="link" @click="selectedUsers = allUsers.map(([u]) => u); selectedTypes = allTypes.map(([t]) => t)">{{ t('normal.selectAll') }}</Button>
-              <Button type="link" @click="selectedUsers = []; selectedTypes = []">{{ t('normal.clear') }}</Button>
+              <Button type="link" @click="selectedTypes = allTypes.map(([t]) => t)">{{ t('normal.selectAll') }}</Button>
+              <Button type="link" @click="selectedTypes = []">{{ t('normal.clear') }}</Button>
             </div>
           </div>
         </template>
@@ -297,36 +286,16 @@ defineExpose({
           :key="annotation.id"
           :ref="el => { if(el) annotationRefs[annotation.id] = el as HTMLDivElement }"
           :class="['comment', { selected: annotation.id === currentAnnotation?.id }]"
+          :style="getCardStyle(annotation)"
           @click="() => selectedAnnotation(annotation, true)"
         >
           <!-- Title + Tool -->
           <div class="title">
             <AnnotationIcon :subtype="annotation.subtype" />
-            <div class="username">{{ annotation.title }}<span>{{ formatPDFDate(annotation.date, true) }}</span></div>
+            <div class="username"><span>{{ formatPDFDate(annotation.date, true) }}</span></div>
             <span class="tool">
-              <!-- 状态下拉 -->
-              <Dropdown>
-                <template #overlay>
-                  <ul>
-                    <li v-for="([statusKey, option]) in Object.entries(commentStatusOptions)" :key="statusKey" @click.stop="addReply(annotation, t('comment.statusText', { value: t(option.labelKey) }), statusKey as string)">
-                      <component :is="option.icon" /> {{ t(option.labelKey) }}
-                    </li>
-                  </ul>
-                </template>
-                <span class="icon"><component :is="getLastStatusIcon(annotation)" /></span>
-              </Dropdown>
-
-              <!-- 操作下拉 -->
-              <Dropdown>
-                <template #overlay>
-                  <ul>
-                    <li @click.stop="replyAnnotation = annotation">{{ t('normal.reply') }}</li>
-                    <li @click.stop="editAnnotation = annotation">{{ t('normal.edit') }}</li>
-                    <li @click.stop="deleteAnnotation(annotation)">{{ t('normal.delete') }}</li>
-                  </ul>
-                </template>
-                <span class="icon"><MoreOutlined /></span>
-              </Dropdown>
+              <Button size="small" type="text" @click.stop="copyAnnotation(annotation)"><CopyOutlined /></Button>
+              <Button size="small" type="text" danger @click.stop="deleteAnnotation(annotation)"><DeleteOutlined /></Button>
             </span>
           </div>
 
