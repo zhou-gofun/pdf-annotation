@@ -518,3 +518,9 @@ export const HASH_PARAMS_POST_URL = `${HASH_PARAMS_PREFIX}_post_url` // 保存�
 export const HASH_PARAMS_DEFAULT_EDITOR_ACTIVE = `${HASH_PARAMS_PREFIX}_default_editor_active` // 是否激活编辑器
 
 export const HASH_PARAMS_DEFAULT_SIDEBAR_OPEN = `${HASH_PARAMS_PREFIX}_default_sidebar_open` // 是否打侧边栏
+
+export const HASH_PARAMS_USER_ID = `${HASH_PARAMS_PREFIX}_user_id` // 用户ID
+
+export const HASH_PARAMS_APP_ID = `${HASH_PARAMS_PREFIX}_app_id` // 应用ID
+
+export const HASH_PARAMS_FILE_ID = `${HASH_PARAMS_PREFIX}_file_id` // 文件ID

@@ -915,7 +915,7 @@ const defaultOptions = {
 };
 {
   defaultOptions.defaultUrl = {
-    value: "compressed.tracemonkey-pldi-09.pdf",
+    value: "",
     kind: OptionKind.VIEWER
   };
   defaultOptions.sandboxBundleSrc = {
@@ -16601,6 +16601,12 @@ initCom(PDFViewerApplication);
 {
   const HOSTED_VIEWER_ORIGINS = new Set(["null", "http://mozilla.github.io", "https://mozilla.github.io"]);
   var validateFileURL = function (file) {
+    // 允许加载任何来源的 PDF 文件（包括跨域 URL）
+    // 原始的 origin 检查会阻止跨域加载，这里禁用该检查
+    return;
+
+    // 以下是原始的验证代码（已禁用）
+    /*
     if (!file) {
       return;
     }
@@ -16617,6 +16623,7 @@ initCom(PDFViewerApplication);
       message: ex.message
     });
     throw ex;
+    */
   };
   var onFileInputChange = function (evt) {
     if (this.pdfViewer?.isInPresentationMode) {

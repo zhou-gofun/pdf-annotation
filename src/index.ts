@@ -5,7 +5,7 @@ import type { EventBus, PDFPageView, PDFViewerApplication } from 'pdfjs'
 import { initializeI18n } from './locale/index'
 import { SyncOutlined } from '@ant-design/icons-vue'
 import { t } from 'i18next'
-import { annotationDefinitions, Annotation, HASH_PARAMS_DEFAULT_EDITOR_ACTIVE, HASH_PARAMS_DEFAULT_SIDEBAR_OPEN, HASH_PARAMS_GET_URL, HASH_PARAMS_POST_URL, HASH_PARAMS_USERNAME, type IAnnotationStore, type IAnnotationStyle, type IAnnotationType } from './const/definitions'
+import { annotationDefinitions, Annotation, HASH_PARAMS_DEFAULT_EDITOR_ACTIVE, HASH_PARAMS_DEFAULT_SIDEBAR_OPEN, HASH_PARAMS_GET_URL, HASH_PARAMS_POST_URL, HASH_PARAMS_USERNAME, HASH_PARAMS_USER_ID, HASH_PARAMS_APP_ID, HASH_PARAMS_FILE_ID, type IAnnotationStore, type IAnnotationStyle, type IAnnotationType } from './const/definitions'
 import { Painter } from './painter'
 import { once, parseQueryString, hashArrayOfObjects } from './utils/utils'
 import { defaultOptions } from './const/default_options'
@@ -111,6 +111,9 @@ class PdfjsAnnotationExtension {
       [HASH_PARAMS_POST_URL]: defaultOptions.setting.HASH_PARAMS_POST_URL,
       [HASH_PARAMS_DEFAULT_EDITOR_ACTIVE]: defaultOptions.setting.HASH_PARAMS_DEFAULT_EDITOR_ACTIVE,
       [HASH_PARAMS_DEFAULT_SIDEBAR_OPEN]: defaultOptions.setting.HASH_PARAMS_DEFAULT_SIDEBAR_OPEN,
+      [HASH_PARAMS_USER_ID]: '',
+      [HASH_PARAMS_APP_ID]: '',
+      [HASH_PARAMS_FILE_ID]: '',
     }
 
     this.parseHashParams()
@@ -206,6 +209,24 @@ class PdfjsAnnotationExtension {
         this.setOption(HASH_PARAMS_POST_URL, postUrl)
       }
     }
+    if (params.has(HASH_PARAMS_USER_ID)) {
+      const userId = params.get(HASH_PARAMS_USER_ID)
+      if (userId) {
+        this.setOption(HASH_PARAMS_USER_ID, userId)
+      }
+    }
+    if (params.has(HASH_PARAMS_APP_ID)) {
+      const appId = params.get(HASH_PARAMS_APP_ID)
+      if (appId) {
+        this.setOption(HASH_PARAMS_APP_ID, appId)
+      }
+    }
+    if (params.has(HASH_PARAMS_FILE_ID)) {
+      const fileId = params.get(HASH_PARAMS_FILE_ID)
+      if (fileId) {
+        this.setOption(HASH_PARAMS_FILE_ID, fileId)
+      }
+    }
   }
 
   private setOption(name: string, value: string) {
@@ -214,6 +235,34 @@ class PdfjsAnnotationExtension {
 
   private getOption(name: string) {
     return this.appOptions[name]
+  }
+
+  /**
+   * @description 构建带有参数的 URL
+   * @param baseUrl 基础 URL
+   * @returns 完整的 URL
+   */
+  private buildUrlWithParams(baseUrl: string): string {
+    if (!baseUrl) return ''
+
+    const userId = this.getOption(HASH_PARAMS_USER_ID)
+    const appId = this.getOption(HASH_PARAMS_APP_ID)
+    const fileId = this.getOption(HASH_PARAMS_FILE_ID)
+
+    // 如果没有任何参数，直接返回原 URL
+    if (!userId && !appId && !fileId) {
+      return baseUrl
+    }
+
+    // 检查 URL 是否已经包含查询参数
+    const separator = baseUrl.includes('?') ? '&' : '?'
+    const params = new URLSearchParams()
+
+    if (userId) params.append('user_id', userId)
+    if (appId) params.append('app_id', appId)
+    if (fileId) params.append('file_id', fileId)
+
+    return `${baseUrl}${separator}${params.toString()}`
   }
 
   private addCustomStyle() {
@@ -590,13 +639,17 @@ class PdfjsAnnotationExtension {
 
   /**
    * @description 获取外部批注数据
-   * @returns 
+   * @returns
    */
   private async getData(): Promise<any[]> {
-      const getUrl = this.getOption(HASH_PARAMS_GET_URL);
-      if (!getUrl) {
+      const baseGetUrl = this.getOption(HASH_PARAMS_GET_URL);
+      if (!baseGetUrl) {
           return [];
       }
+
+      // 构建带参数的完整 URL
+      const getUrl = this.buildUrlWithParams(baseGetUrl);
+
       try {
           message.open({
               type: 'loading',
@@ -638,14 +691,17 @@ class PdfjsAnnotationExtension {
       dataToSave,
     )
 
-    const postUrl = this.getOption(HASH_PARAMS_POST_URL)
-    if (!postUrl) {
+    const basePostUrl = this.getOption(HASH_PARAMS_POST_URL)
+    if (!basePostUrl) {
       message.error({
         content: t('save.noPostUrl', { value: HASH_PARAMS_POST_URL }),
         key: 'save',
       })
       return
     }
+
+    // 构建带参数的完整 URL
+    const postUrl = this.buildUrlWithParams(basePostUrl)
 
     const modal = Modal.info({
       content: h(Space, null, {
