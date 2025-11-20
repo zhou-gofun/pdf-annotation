@@ -662,7 +662,17 @@ class PdfjsAnnotationExtension {
               const errorMessage = `HTTP Error ${response.status}: ${response.statusText || 'Unknown Status'}`;
               throw new Error(errorMessage);
           }
-          return await response.json();
+
+          const result = await response.json();
+
+          // 适配后端返回格式: {code: 0, message: "获取注释成功", data: {annotation: [...]}}
+          if (result.code === 0) {
+              // 成功获取数据，返回 annotation 数组
+              return result.data?.annotation || [];
+          } else {
+              // 后端返回错误
+              throw new Error(result.message || 'Failed to load annotations');
+          }
       } catch (error) {
           Modal.error({
               content: t('load.fail', { value: (error as Error)?.message }),
@@ -702,6 +712,8 @@ class PdfjsAnnotationExtension {
 
     // 构建带参数的完整 URL
     const postUrl = this.buildUrlWithParams(basePostUrl)
+
+    console.log("postUrl: ",postUrl)
 
     const modal = Modal.info({
       content: h(Space, null, {
