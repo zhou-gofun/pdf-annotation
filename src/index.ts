@@ -83,6 +83,14 @@ class PdfjsAnnotationExtension {
   initialDataHash: number | null
   _connectorLine: ConnectorLine | null = null
 
+  // 智能自动保存相关
+  private autoSaveTimer: number | null = null // 防抖定时器
+  private periodicSaveTimer: number | null = null // 定期保存定时器
+  private isDirty: boolean = false // 是否有未保存的修改
+  private isAutoSaveEnabled: boolean = false // 自动保存是否已启动
+  private readonly AUTO_SAVE_DELAY = 3000 // 3秒防抖
+  private readonly PERIODIC_SAVE_INTERVAL = 30000 // 30秒定期保存
+
   constructor() {
     this.loadEnd = false
     this.initialDataHash = null
@@ -137,9 +145,13 @@ class PdfjsAnnotationExtension {
         if (this.isCommentOpen()) {
           this.customCommentRef.value?.selectedAnnotation(annotation, true)
         }
+        // 触发防抖保存
+        this.triggerAutoSave()
       },
       onStoreDelete: id => {
         this.customCommentRef.value?.delAnnotation(id)
+        // 删除操作立即保存（关键操作）
+        this.saveDataImmediate()
       },
       onAnnotationSelected: (annotation, isClick, selectorRect) => {
         this.customerAnnotationMenuRef.value?.open(annotation, selectorRect)
@@ -150,6 +162,8 @@ class PdfjsAnnotationExtension {
       },
       onAnnotationChange: annotation => {
         this.customCommentRef.value?.updateAnnotation(annotation)
+        // 触发防抖保存
+        this.triggerAutoSave()
       },
       onAnnotationChanging: () => {
         this.connectorLine?.clearConnection()
@@ -182,9 +196,11 @@ class PdfjsAnnotationExtension {
     this.renderPopBar()
     this.renderAnnotationMenu()
     this.renderComment()
-    
+
     // 等待PDF加载完成后隐藏loading
     this.setupLoadingControl()
+
+    // 注意：自动保存系统将在 documentloaded 事件中、数据加载完成后启动
   }
 
   private parseHashParams() {
@@ -396,7 +412,7 @@ class PdfjsAnnotationExtension {
       const saveButton = document.getElementById('saveButton')
       if (saveButton) {
         saveButton.addEventListener('click', () => {
-          this.saveData()
+          this.saveDataManually()
         })
       }
 
@@ -441,7 +457,7 @@ class PdfjsAnnotationExtension {
         onChange: (currentAnnotation: IAnnotationType | null, dataTransfer: string | null) => {
           this.painter.activate(currentAnnotation, dataTransfer)
         },
-        onSave: () => this.saveData(),
+        onSave: () => this.saveDataManually(),
         onExport: async (type: string) => {
           if (type === 'excel') {
             this.exportExcel()
@@ -605,14 +621,24 @@ class PdfjsAnnotationExtension {
           this.connectorLine?.clearConnection()
       })
 
+      // 监听缩放变化事件 - 实现注释与PDF页面的同步缩放
+      this.PDFJS_EventBus._on('scalechanging', () => {
+          // 立即更新所有 Konva Canvas 的缩放
+          this.painter.updateAllCanvasScales()
+
+          // 缩放时关闭菜单
+          this.customerAnnotationMenuRef.value?.close()
+          this.connectorLine?.clearConnection()
+      })
+
       // 监听页面渲染完成事件
       this.PDFJS_EventBus._on(
           'pagerendered',
           async ({ source, cssTransform, pageNumber }: { source: PDFPageView; cssTransform: boolean; pageNumber: number }) => {
               setLoadEnd()
-              
-              // 进一步增加延迟时间，给PDF.js更多时间完成所有内部操作
-              // 包括annotation layer的渲染和link injection
+
+              // 延迟时间优化：由于 scalechanging 事件已处理缩放场景，此处延迟可适当减少
+              // 此延迟主要用于等待 annotation layer 渲染和 link injection
               setTimeout(() => {
                   // 检查页面是否仍然存在且完全渲染完成
                   if (source && source.renderingState === 3 && source.div && source.viewport) {
@@ -621,7 +647,7 @@ class PdfjsAnnotationExtension {
                           this.painter.initCanvas({ pageView: source, cssTransform, pageNumber })
                       }
                   }
-              }, 500) // 增加到 500ms 延迟，确保 PDF.js 完全完成内部操作
+              }, 200) // 从 500ms 优化到 200ms，缩放同步由 scalechanging 事件处理
           }
       )
 
@@ -631,6 +657,10 @@ class PdfjsAnnotationExtension {
           const data = await this.getData()
           this.initialDataHash = hashArrayOfObjects(data)
           await this.painter.initAnnotations(data, defaultOptions.setting.LOAD_PDF_ANNOTATION)
+
+          // 数据加载并初始化完成后，启动智能自动保存系统
+          this.setupAutoSave()
+
           if (this.loadEnd) {
               this.updatePdfjs()
           }
@@ -695,11 +725,6 @@ class PdfjsAnnotationExtension {
    */
   private async saveData(): Promise<void> {
     const dataToSave = this.painter.getData()
-    console.log(
-      '%c [ dataToSave ]',
-      'font-size:13px; background:#d10d00; color:#ff5144;',
-      dataToSave,
-    )
 
     const basePostUrl = this.getOption(HASH_PARAMS_POST_URL)
     if (!basePostUrl) {
@@ -713,17 +738,11 @@ class PdfjsAnnotationExtension {
     // 构建带参数的完整 URL
     const postUrl = this.buildUrlWithParams(basePostUrl)
 
-    console.log("postUrl: ",postUrl)
-
-    const modal = Modal.info({
-      content: h(Space, null, {
-        default: () => [h(SyncOutlined, { spin: true }), t('save.start')],
-      }),
-      closable: false,
-      okButtonProps: {
-        loading: true,
-      },
-      okText: t('normal.ok'),
+    // 显示保存中提示
+    message.loading({
+      content: t('save.start'),
+      key: 'save',
+      duration: 0, // 不自动关闭
     })
 
     try {
@@ -739,25 +758,18 @@ class PdfjsAnnotationExtension {
         )
       }
 
-      const result = await response.json()
+      await response.json()
       this.initialDataHash = hashArrayOfObjects(dataToSave)
 
-      modal.destroy()
       message.success({
-        content: t('save.success'),
+        content: '保存成功',
         key: 'save',
       })
-      console.log('Saved successfully:', result)
     } catch (error: any) {
-      modal.update({
-        type: 'error',
+      message.error({
         content: error?.message || t('save.fail', { value: '' }),
-        closable: true,
-        okButtonProps: {
-          loading: false,
-        },
+        key: 'save',
       })
-      console.error('Error while saving data:', error)
     }
   }
   private async exportPdf() {
@@ -806,6 +818,8 @@ class PdfjsAnnotationExtension {
     // 调用painter的撤销功能
     if (this.painter) {
       this.painter.undo()
+      // 触发防抖保存
+      this.triggerAutoSave()
     }
   }
 
@@ -813,6 +827,8 @@ class PdfjsAnnotationExtension {
     // 调用painter的重做功能
     if (this.painter) {
       this.painter.redo()
+      // 触发防抖保存
+      this.triggerAutoSave()
     }
   }
 
@@ -847,6 +863,182 @@ class PdfjsAnnotationExtension {
 
   public hasUnsavedChanges(): boolean {
       return hashArrayOfObjects(this.painter.getData()) !== this.initialDataHash
+  }
+
+  /**
+   * 智能自动保存系统
+   */
+
+  /**
+   * 设置自动保存机制
+   */
+  private setupAutoSave(): void {
+    // 防止重复初始化
+    if (this.isAutoSaveEnabled) {
+      console.log('[Auto Save] 自动保存已启动，跳过重复初始化')
+      return
+    }
+
+    this.isAutoSaveEnabled = true
+    console.log('[Auto Save] 自动保存系统启动')
+
+    // 1. 启动定期检查保存（兜底机制）
+    this.periodicSaveTimer = window.setInterval(() => {
+      if (this.isDirty && this.hasUnsavedChanges()) {
+        console.log('[Auto Save] 定期保存触发')
+        this.saveDataSilently()
+      }
+    }, this.PERIODIC_SAVE_INTERVAL)
+
+    // 2. 监听页面关闭事件
+    window.addEventListener('beforeunload', this.handleBeforeUnload)
+
+    // 3. 监听页面可见性变化（切换标签页时保存）
+    document.addEventListener('visibilitychange', this.handleVisibilityChange)
+  }
+
+  /**
+   * 触发防抖自动保存
+   */
+  private triggerAutoSave(): void {
+    // 如果自动保存未启动，跳过
+    if (!this.isAutoSaveEnabled) {
+      return
+    }
+
+    this.isDirty = true
+
+    // 清除之前的定时器
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer)
+    }
+
+    // 设置新的防抖定时器
+    this.autoSaveTimer = window.setTimeout(() => {
+      console.log('[Auto Save] 防抖保存触发')
+      this.saveDataSilently()
+    }, this.AUTO_SAVE_DELAY)
+  }
+
+  /**
+   * 立即保存（关键操作使用）
+   */
+  private saveDataImmediate(): void {
+    // 如果自动保存未启动，跳过
+    if (!this.isAutoSaveEnabled) {
+      return
+    }
+
+    // 清除防抖定时器
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer)
+      this.autoSaveTimer = null
+    }
+
+    console.log('[Auto Save] 立即保存触发')
+    this.saveDataSilently()
+  }
+
+  /**
+   * 静默保存（不显示提示）
+   */
+  private async saveDataSilently(): Promise<void> {
+    if (!this.hasUnsavedChanges()) {
+      this.isDirty = false
+      return
+    }
+
+    const dataToSave = this.painter.getData()
+    const basePostUrl = this.getOption(HASH_PARAMS_POST_URL)
+
+    if (!basePostUrl) {
+      console.warn('[Auto Save] 未配置保存URL')
+      return
+    }
+
+    const postUrl = this.buildUrlWithParams(basePostUrl)
+
+    try {
+      const response = await fetch(postUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dataToSave),
+      })
+
+      if (!response.ok) {
+        throw new Error(`保存失败: ${response.status}`)
+      }
+
+      await response.json()
+
+      // 更新 hash，标记为已保存
+      this.initialDataHash = hashArrayOfObjects(dataToSave)
+      this.isDirty = false
+
+      console.log('[Auto Save] 保存成功')
+    } catch (error) {
+      console.error('[Auto Save] 保存失败:', error)
+      // 保持 dirty 状态，下次继续尝试
+    }
+  }
+
+  /**
+   * 页面关闭前保存
+   */
+  private handleBeforeUnload = (e: BeforeUnloadEvent): void => {
+    if (this.hasUnsavedChanges()) {
+      // 尝试同步保存
+      this.saveDataSilently()
+
+      // 提示用户有未保存的更改
+      e.preventDefault()
+      e.returnValue = ''
+    }
+  }
+
+  /**
+   * 页面可见性变化处理
+   */
+  private handleVisibilityChange = (): void => {
+    if (document.hidden && this.isDirty && this.hasUnsavedChanges()) {
+      // 页面隐藏时（切换标签页）保存
+      console.log('[Auto Save] 页面隐藏时保存')
+      this.saveDataSilently()
+    }
+  }
+
+  /**
+   * 手动保存（保留原有的手动保存按钮功能）
+   */
+  private async saveDataManually(): Promise<void> {
+    // 清除自动保存定时器
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer)
+      this.autoSaveTimer = null
+    }
+
+    // 调用原有的 saveData 方法（带UI提示）
+    await this.saveData()
+
+    // 保存成功后重置 dirty 状态
+    this.isDirty = false
+  }
+
+  /**
+   * 清理资源（在页面卸载或组件销毁时调用）
+   */
+  public cleanup(): void {
+    // 清理定时器
+    if (this.autoSaveTimer) {
+      clearTimeout(this.autoSaveTimer)
+    }
+    if (this.periodicSaveTimer) {
+      clearInterval(this.periodicSaveTimer)
+    }
+
+    // 移除事件监听
+    window.removeEventListener('beforeunload', this.handleBeforeUnload)
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange)
   }
 
 }

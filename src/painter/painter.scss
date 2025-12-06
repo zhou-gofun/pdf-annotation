@@ -10,6 +10,11 @@
     transform-origin: 0 0;
     z-index: 2;
     pointer-events: none; /* 默认不拦截鼠标事件，让 PDF.js 正常工作 */
+
+    /* 性能优化：启用硬件加速和合成层 */
+    will-change: transform; /* 提示浏览器这个元素会进行 transform 变换 */
+    backface-visibility: hidden; /* 隐藏背面，优化 3D 变换性能 */
+    -webkit-backface-visibility: hidden;
 }
 
 .PdfjsAnnotationExtension_selector_hover {

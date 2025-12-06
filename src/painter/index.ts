@@ -84,6 +84,7 @@ export class Painter {
   ) => void; // 批注已更改的回调函数
 
   private konvaMap = new Map<number, Konva.Stage>();
+  private realScale: Map<number, number> = new Map(); // 记录每个页面的基准 scale
 
   pdfjsEventBus: EventBus; // PDF.js EventBus 实例
 
@@ -361,7 +362,6 @@ export class Painter {
    */
   public initCanvas({
     pageView,
-    cssTransform,
     pageNumber,
   }: {
     pageView: PDFPageView;
@@ -383,7 +383,7 @@ export class Painter {
         console.warn(
           `Page ${pageNumber} is not fully rendered (state: ${pageView.renderingState})`
         );
-        return; // 不再重试，避免无限循环
+        return;
       }
 
       // 检查 DOM 元素是否仍然在文档中
@@ -392,7 +392,7 @@ export class Painter {
         return;
       }
 
-      // 检查是否已经存在画布，避免重复初始化
+      // 检查是否已经存在画布
       const existingCanvas = this.konvaCanvasStore.get(pageNumber);
       if (
         existingCanvas &&
@@ -400,28 +400,22 @@ export class Painter {
         existingCanvas.wrapper &&
         isElementInDOM(existingCanvas.wrapper)
       ) {
-        // 如果只是缩放变化，更新现有画布
-        if (cssTransform) {
-          this.scaleCanvas(pageView, pageNumber);
-        }
+        // 画布已存在，不做任何操作
+        // 所有缩放由 scalechanging 事件通过 CSS transform 处理
         return;
       }
 
-      // 额外的安全延迟，确保不干扰PDF.js的后续操作
+      // 只在首次创建时初始化
       setTimeout(() => {
         try {
-          if (cssTransform) {
-            this.scaleCanvas(pageView, pageNumber);
-          } else {
-            this.insertCanvas(pageView, pageNumber);
-          }
+          this.insertCanvas(pageView, pageNumber);
         } catch (error) {
           console.error(
             `Error in delayed canvas initialization for page ${pageNumber}:`,
             error
           );
         }
-      }, 100); // 再额外延迟100ms，总延迟变成600ms
+      }, 50);
     } catch (error) {
       console.error(`Error initializing canvas for page ${pageNumber}:`, error);
     }
@@ -1150,6 +1144,8 @@ export class Painter {
       if (!isElementInDOM(konvaCanvas.wrapper)) {
         konvaCanvas.konvaStage.destroy();
         this.konvaCanvasStore.delete(konvaCanvas.pageNumber);
+        // 清理 realScale 记录
+        this.realScale.delete(konvaCanvas.pageNumber);
       }
     });
   }
@@ -1163,6 +1159,9 @@ export class Painter {
     const painterWrapper = this.createPainterWrapper(pageView, pageNumber);
     const konvaStage = this.createKonvaStage(painterWrapper, pageView.viewport);
 
+    // 记录初始的真实缩放比例
+    this.realScale.set(pageNumber, pageView.viewport.scale);
+
     this.konvaCanvasStore.set(pageNumber, {
       pageNumber,
       konvaStage,
@@ -1174,20 +1173,33 @@ export class Painter {
   }
 
   /**
-   * 调整现有 KonvaCanvas 的缩放
-   * @param pageView - 当前 PDF 页面视图
-   * @param pageNumber - 当前页码
+   * 纯 CSS Transform 缩放方案（完全重构）
+   * 核心思路：永远不修改 Konva 的 scale/width/height，避免触发 canvas 重绘
+   * 所有缩放都通过 CSS transform 实现，保证注释内容永远不会消失
    */
-  private scaleCanvas(pageView: PDFPageView, pageNumber: number): void {
-    const konvaCanvas = this.konvaCanvasStore.get(pageNumber);
-    if (!konvaCanvas) return;
+  public updateAllCanvasScales(): void {
+    this.konvaCanvasStore.forEach((konvaCanvas, pageNumber) => {
+      const pageView = this.pdfViewerApplication.pdfViewer.getPageView(pageNumber - 1);
 
-    const { konvaStage } = konvaCanvas;
-    const { scale, width, height } = pageView.viewport;
+      if (pageView && pageView.viewport && konvaCanvas.wrapper) {
+        const targetScale = pageView.viewport.scale;
 
-    konvaStage.scale({ x: scale, y: scale });
-    konvaStage.width(width);
-    konvaStage.height(height);
+        // 获取初始缩放（第一次记录）
+        let baseScale = this.realScale.get(pageNumber);
+        if (baseScale === undefined) {
+          // 首次记录当前的 Konva scale 作为基准
+          baseScale = konvaCanvas.konvaStage.scaleX();
+          this.realScale.set(pageNumber, baseScale);
+        }
+
+        // 计算 CSS transform 需要的缩放比例
+        const cssScaleRatio = targetScale / baseScale;
+
+        // 应用 CSS transform（GPU 加速，完全流畅，永不修改 Konva）
+        konvaCanvas.wrapper.style.transform = `scale(${cssScaleRatio})`;
+        konvaCanvas.wrapper.style.transformOrigin = '0 0';
+      }
+    });
   }
 
   public disable() {
